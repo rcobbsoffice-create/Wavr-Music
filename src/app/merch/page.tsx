@@ -151,6 +151,12 @@ export default function MerchPage() {
         </div>
       </div>
     </div>
+    return (
+  <>
+    <div className="min-h-screen bg-gray-950">
+      {/* All your existing page content stays exactly the same */}
+    </div>
+
     <CartDrawer />
-  );
-}
+  </>
+);

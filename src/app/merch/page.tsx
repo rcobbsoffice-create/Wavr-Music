@@ -152,8 +152,7 @@ export default function MerchPage() {
       </div>
     </div>
     
-    {/* This is the part that was fixed: removed the extra 'return' and merged the CartDrawer */}
     <CartDrawer />
   </>
-  ); // End of the component return
-} // End of the MerchPage function
+  );
+}

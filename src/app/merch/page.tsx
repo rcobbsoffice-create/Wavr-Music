@@ -123,7 +123,7 @@ export default function MerchPage() {
           </div>
         )}
 
-        {/* Bottom CTA */}
+                {/* Bottom CTA */}
         <div className="mt-16 text-center bg-gray-900 border border-gray-800 rounded-2xl p-10">
           <h2 className="text-3xl font-black text-white mb-3">
             Launch Your Own Merch Line
@@ -151,12 +151,9 @@ export default function MerchPage() {
         </div>
       </div>
     </div>
-    return (
-  <>
-    <div className="min-h-screen bg-gray-950">
-      {/* All your existing page content stays exactly the same */}
-    </div>
-
+    
+    {/* This is the part that was fixed: removed the extra 'return' and merged the CartDrawer */}
     <CartDrawer />
   </>
-);
+  ); // End of the component return
+} // End of the MerchPage function

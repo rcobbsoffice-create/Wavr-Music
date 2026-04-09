@@ -142,7 +142,7 @@ export default function MerchPage() {
               </span>
             ))}
           </div>
-          <a
+                    <a
             href="/dashboard"
             className="inline-block bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold px-8 py-3 rounded-xl"
           >
@@ -150,7 +150,10 @@ export default function MerchPage() {
           </a>
         </div>
       </div>
-  <CartDrawer />
+    </div>
+
+    <CartDrawer />
   </>
   );
 }
+

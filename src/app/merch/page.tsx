@@ -150,7 +150,6 @@ export default function MerchPage() {
           </a>
         </div>
       </div>
-    </div>
   <CartDrawer />
   </>
   );

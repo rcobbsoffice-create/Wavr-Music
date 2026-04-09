@@ -151,8 +151,7 @@ export default function MerchPage() {
         </div>
       </div>
     </div>
-    
-    <CartDrawer />
+  <CartDrawer />
   </>
   );
 }

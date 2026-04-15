@@ -71,7 +71,13 @@ export async function POST(req: NextRequest) {
 
     return res;
   } catch (err) {
-    console.error("[POST /api/auth/login]", err);
+    if (err instanceof Error) {
+      console.error("[POST /api/auth/login] Error Name:", err.name);
+      console.error("[POST /api/auth/login] Error Message:", err.message);
+      console.error("[POST /api/auth/login] Stack Trace:\n", err.stack);
+    } else {
+      console.error("[POST /api/auth/login] Unknown error:", err);
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

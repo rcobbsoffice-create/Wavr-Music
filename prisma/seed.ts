@@ -1,15 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PrismaClient } = require('@prisma/client')
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PrismaLibSql } = require('@prisma/adapter-libsql')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const bcrypt = require('bcryptjs')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const path = require('path')
 
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db').split(path.sep).join('/')
-const adapter = new PrismaLibSql({ url: `file:${dbPath}` })
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
 async function main() {
   console.log('Seeding database...')

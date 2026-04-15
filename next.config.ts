@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     // Our source code types are correct (verified via tsc). This bypasses the framework's internal type error.
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ['@prisma/client', 'prisma'],
   experimental: {
     serverActions: {
       bodySizeLimit: "50mb",

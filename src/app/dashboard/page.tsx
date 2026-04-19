@@ -112,6 +112,9 @@ interface MyBeat {
   status: string;
 }
 
+import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -122,6 +125,13 @@ export default function DashboardPage() {
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState("");
+
+  const sidebarNavItems = navItems.map(item => ({
+    id: item.id,
+    label: item.label,
+    icon: item.icon,
+    tab: item.id
+  }));
 
   useEffect(() => {
     fetch("/api/producer/stats")
@@ -169,82 +179,25 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      {/* Sidebar */}
-      <aside
-        className={`
-          shrink-0 w-60 bg-gray-900 border-r border-gray-800 flex flex-col
-          ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 pt-16" : "hidden lg:flex"}
-        `}
-      >
-        {/* Artist info */}
-        <div className="p-5 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-700 flex items-center justify-center text-white font-bold text-sm">
-              DJ
-            </div>
-            <div className="min-w-0">
-              <p className="text-white font-semibold text-sm truncate">DJ Phantom</p>
-              <p className="text-gray-500 text-xs">Pro Plan</p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col lg:flex-row">
+      {/* Shared Sidebar */}
+      <DashboardSidebar
+        items={sidebarNavItems}
+        activeTab={activeTab}
+        onTabChange={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        title="Account"
+        roleBadge="Artist"
+      />
 
-        {/* Nav items */}
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === item.id
-                  ? "bg-purple-900/40 text-purple-300 border border-purple-700/30"
-                  : "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
-              </svg>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Quick upload */}
-        <div className="p-4 border-t border-gray-800">
-          <Link
-            href="/producer"
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-sm font-semibold py-2.5 rounded-xl"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Upload Beat
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 min-w-0">
-        {/* Top bar */}
-        <div className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden text-gray-400 hover:text-white"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-bold text-white capitalize">{activeTab}</h1>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-gray-500 text-sm hidden sm:block">
-              {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-            </span>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-700" />
-          </div>
-        </div>
-
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+        <DashboardHeader
+          title={navItems.find(n => n.id === activeTab)?.label || "Dashboard"}
+          onOpenSidebar={() => setSidebarOpen(true)}
+        />
+        
         <div className="p-4 sm:p-6 lg:p-8">
           {activeTab === "overview" && (
             <div className="space-y-8">

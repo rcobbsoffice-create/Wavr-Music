@@ -91,10 +91,19 @@ const CHART_H = 140;
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
+
+const analyticsNavItems = [
+  { id: "overview", label: "Overview", icon: "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3", href: "/analytics" },
+  { id: "producers", label: "Producers", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
+];
+
 export default function AnalyticsPage() {
   const [selectedRange, setSelectedRange] = useState(DATE_RANGES[1]);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -136,33 +145,47 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-white">Analytics</h1>
-            <p className="text-gray-400 text-sm mt-1">Platform-wide insights into plays, revenue, and licensing</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {DATE_RANGES.map((r) => (
-              <button
-                key={r.range}
-                onClick={() => setSelectedRange(r)}
-                className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  selectedRange.range === r.range
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-800 text-gray-400 border border-gray-700 hover:text-gray-300"
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
+    <div className="min-h-screen bg-gray-950 flex flex-col lg:flex-row">
+      {/* Shared Sidebar */}
+      <DashboardSidebar
+        items={analyticsNavItems}
+        activeTab="overview"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        title="Insight"
+        roleBadge="Analytics"
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+        <DashboardHeader
+          title="Platform Analytics"
+          onOpenSidebar={() => setSidebarOpen(true)}
+        />
+        
+        {/* Custom Range Selector Bar */}
+        <div className="bg-gray-900/40 border-b border-gray-800 py-4 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Date Range</p>
+            <div className="flex gap-2 flex-wrap">
+              {DATE_RANGES.map((r) => (
+                <button
+                  key={r.range}
+                  onClick={() => setSelectedRange(r)}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    selectedRange.range === r.range
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20"
+                      : "bg-gray-800 text-gray-500 border border-gray-700 hover:text-gray-300"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 flex-1">
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -47,6 +47,9 @@ const sidebarItems: { tab: Tab; label: string; emoji: string }[] = [
   { tab: "support",    label: "Support Tickets",    emoji: "🎫" },
 ];
 
+import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
+
 const STATUS_COLORS: Record<string, string> = {
   open:        "text-yellow-400 bg-yellow-900/20 border-yellow-800/30",
   in_progress: "text-blue-400 bg-blue-900/20 border-blue-800/30",
@@ -58,7 +61,15 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Map sidebar items for common component
+  const sidebarNavItems = sidebarItems.map(item => ({
+    id: item.tab,
+    label: item.label,
+    icon: <span className="text-lg">{item.emoji}</span>,
+    tab: item.tab
+  }));
 
   // Overview
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -189,62 +200,26 @@ export default function AdminDashboard() {
   const maxMrr = Math.max(...(stats?.monthlyRevenue.map((m) => m.revenue) ?? [1]), 1);
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "w-64" : "w-16"} transition-all duration-300 bg-gray-900 border-r border-gray-800 flex flex-col fixed left-0 top-0 h-full z-40 overflow-y-auto`}>
-        <div className="p-4 border-b border-gray-800 flex items-center gap-3 sticky top-0 bg-gray-900 z-10">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white shrink-0">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          {sidebarOpen && <span className="text-white font-black text-xl bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">WAVR Admin</span>}
-        </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col lg:flex-row">
+      {/* Shared Sidebar */}
+      <DashboardSidebar
+        items={sidebarNavItems}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as Tab)}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        title="Admin"
+        roleBadge="Administrator"
+      />
 
-        {sidebarOpen && (
-          <div className="px-4 py-4 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-red-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                {user?.name?.charAt(0) ?? "A"}
-              </div>
-              <div className="min-w-0">
-                <p className="text-white font-semibold text-sm truncate">{user?.name ?? "Admin"}</p>
-                <span className="text-xs bg-red-900/50 text-red-300 px-2 py-0.5 rounded-full border border-red-700/30">Administrator</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <nav className="flex-1 p-3 space-y-0.5">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.tab}
-              onClick={() => setActiveTab(item.tab)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                activeTab === item.tab
-                  ? "bg-red-600/20 text-red-300 border border-red-700/30"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800"
-              }`}
-            >
-              <span className="shrink-0">{item.emoji}</span>
-              {sidebarOpen && <span className="truncate">{item.label}</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-3 border-t border-gray-800 sticky bottom-0 bg-gray-900">
-          <button
-            onClick={() => { logout(); router.push("/"); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-sm font-medium"
-          >
-            <span className="shrink-0">🚪</span>
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className={`flex-1 ${sidebarOpen ? "ml-64" : "ml-16"} transition-all duration-300 p-6 min-h-screen`}>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+        <DashboardHeader
+          title={sidebarItems.find(i => i.tab === activeTab)?.label || "Admin Dashboard"}
+          onOpenSidebar={() => setSidebarOpen(true)}
+        />
+        
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">-6 min-h-screen`}>
 
         {/* OVERVIEW */}
         {activeTab === "overview" && (

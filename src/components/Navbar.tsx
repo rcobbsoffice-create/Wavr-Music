@@ -13,10 +13,21 @@ const roleBadgeStyle: Record<string, string> = {
   artist: "bg-cyan-900/50 text-cyan-300 border border-cyan-700/30",
 };
 
+import { usePathname } from "next/navigation";
+
 export default function Navbar() {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
+
+  // Hide navbar on dashboard pages
+  const isDashboard = pathname.startsWith("/admin") || 
+                      pathname.startsWith("/producer") || 
+                      pathname.startsWith("/dashboard") ||
+                      pathname.startsWith("/analytics");
+
+  if (isDashboard) return null;
 
   async function handleLogout() {
     await logout();
@@ -217,6 +228,8 @@ export default function Navbar() {
           </div>
         </div>
       )}
+      {/* Spacer to push content down below the fixed navbar */}
+      <div className="h-16" />
     </nav>
   );
 }

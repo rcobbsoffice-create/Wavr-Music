@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/apiAuth";
-import { saveUploadedFile } from "@/lib/uploadFile";
 
 // GET /api/beats — public list of all active beats
 export async function GET() {
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
     const priceBasic = parseFloat((form.get("priceBasic") as string) ?? "29.99");
     const pricePremium = parseFloat((form.get("pricePremium") as string) ?? "99.99");
     const priceExclusive = parseFloat((form.get("priceExclusive") as string) ?? "299.99");
-    const audioFileEntry = form.get("audio") as File | null;
+    const audioUrl = (form.get("audioUrl") as string | null)?.trim() || undefined;
 
     if (!title || !genre || !bpmStr || !key) {
       return NextResponse.json(
@@ -81,13 +80,6 @@ export async function POST(req: NextRequest) {
       // keep default
     }
 
-    // Save audio file if provided
-    let audioFilePath: string | undefined;
-    if (audioFileEntry && audioFileEntry.size > 0) {
-      const buffer = Buffer.from(await audioFileEntry.arrayBuffer());
-      audioFilePath = await saveUploadedFile(buffer, audioFileEntry.name, "audio");
-    }
-
     const beat = await prisma.beat.create({
       data: {
         title,
@@ -100,7 +92,7 @@ export async function POST(req: NextRequest) {
         pricePremium,
         priceExclusive,
         producerId: user.id,
-        audioFile: audioFilePath,
+        audioFile: audioUrl,
         status: "active",
       },
     });
@@ -142,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Queue stem separation if audio was uploaded
-    if (audioFilePath && process.env.STEMS_WORKER_URL) {
+    if (audioUrl && process.env.STEMS_WORKER_URL) {
       fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/beats/${beat.id}/stems`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-internal": "1" },

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 
 interface MyBeat {
   id: string;
@@ -291,6 +292,16 @@ export default function ProducerDashboard() {
     }
     setUploading(true);
     try {
+      // Upload audio directly to Vercel Blob (bypasses 4.5MB API body limit)
+      let audioUrl: string | undefined;
+      if (uploadFile) {
+        const blob = await upload(uploadFile.name, uploadFile, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+        });
+        audioUrl = blob.url;
+      }
+
       const fd = new FormData();
       fd.append("title", uploadTitle);
       fd.append("genre", uploadGenre);
@@ -301,7 +312,7 @@ export default function ProducerDashboard() {
       fd.append("priceBasic", uploadPriceBasic);
       fd.append("pricePremium", uploadPricePremium);
       fd.append("priceExclusive", uploadPriceExclusive);
-      if (uploadFile) fd.append("audio", uploadFile);
+      if (audioUrl) fd.append("audioUrl", audioUrl);
       const validCollabs = collabs.filter((c) => c.email.trim() && parseFloat(c.split) > 0);
       if (validCollabs.length > 0) fd.append("collaborators", JSON.stringify(validCollabs));
       const res = await fetch("/api/beats", { method: "POST", body: fd });

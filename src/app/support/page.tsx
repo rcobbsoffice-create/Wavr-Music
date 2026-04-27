@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface Ticket {
   id: string;
@@ -65,7 +66,7 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      <div className="bg-gradient-to-r from-purple-900/30 via-gray-900 to-gray-900 border-b border-gray-800 py-12">
+      <div className="pt-32 pb-12 bg-gray-900/50 border-b border-gray-800">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <h1 className="text-4xl font-black text-white mb-2">Support Hub</h1>
           <p className="text-gray-400">Get help from our team or search our knowledge base.</p>

@@ -156,36 +156,77 @@ def process():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        cmd = [sys.executable, "-m", "demucs", "-n", "htdemucs", "-o", str(out_dir), str(abs_audio)]
+        print(f"[Demucs] Running: {' '.join(cmd)}")
+        
         result = subprocess.run(
-            [sys.executable, "-m", "demucs",
-             "-n", "htdemucs", "-o", str(out_dir), str(abs_audio)],
-            capture_output=True, text=True, timeout=600
+            cmd,
+            capture_output=True, 
+            text=True, 
+            timeout=900 # Increased to 15 mins
         )
+        
         if result.returncode != 0:
-            print("[Demucs error]", result.stderr)
-            return jsonify({"error": "Demucs failed", "detail": result.stderr}), 500
+            print(f"[Demucs Error] Return code: {result.returncode}")
+            print(f"[Demucs Stderr] {result.stderr}")
+            print(f"[Demucs Stdout] {result.stdout}")
+            return jsonify({
+                "error": "Demucs separation failed", 
+                "detail": result.stderr,
+                "code": result.returncode
+            }), 500
 
-        stem_folder = out_dir / "htdemucs" / abs_audio.stem
+        # Demucs structure: {out_dir}/htdemucs/{filename_stem}/*.wav
+        # Note: Demucs usually uses the filename without extension.
+        stem_name = abs_audio.stem
+        model_name = "htdemucs"
+        stem_folder = out_dir / model_name / stem_name
+        
+        print(f"[Demucs] Checking for output in: {stem_folder}")
+        
         if not stem_folder.exists():
-            return jsonify({"error": f"Expected output folder not found: {stem_folder}"}), 500
+            # Sometimes Demucs preserves spaces or special characters differently
+            # Let's look for any subfolder in {out_dir}/htdemucs/
+            subfolders = list((out_dir / model_name).iterdir()) if (out_dir / model_name).exists() else []
+            if subfolders:
+                stem_folder = subfolders[0]
+                print(f"[Demucs] Using fallback subfolder: {stem_folder}")
+            else:
+                return jsonify({
+                    "error": "Demucs finished but output folder was not found.",
+                    "checked": str(stem_folder)
+                }), 500
 
         name_map = {"drums": "drums", "bass": "bass", "vocals": "melody", "other": "other"}
         stems = []
         for demucs_name, platform_name in name_map.items():
             src = stem_folder / f"{demucs_name}.wav"
+            # Fallback for different models if they use different extensions
+            if not src.exists():
+                src = stem_folder / f"{demucs_name}.mp3"
+            
             if src.exists():
                 dest = out_dir / f"{beat_id}_{platform_name}.wav"
+                print(f"[Demucs] Copying {src.name} -> {dest.name}")
                 shutil.copy(src, dest)
-                stems.append({"type": platform_name, "filePath": f"/uploads/stems/{beat_id}/{beat_id}_{platform_name}.wav"})
+                stems.append({
+                    "type": platform_name, 
+                    "filePath": f"/uploads/stems/{beat_id}/{beat_id}_{platform_name}.wav"
+                })
 
+        if not stems:
+            return jsonify({"error": "No stem files were generated", "path": str(stem_folder)}), 500
+
+        print(f"[Demucs] Success! Generated {len(stems)} stems.")
         return jsonify({"ok": True, "stems": stems})
 
     except subprocess.TimeoutExpired:
-        return jsonify({"error": "Stem separation timed out (300s)"}), 500
+        print("[Demucs] Process timed out after 900s")
+        return jsonify({"error": "Stem separation timed out (900s)"}), 500
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 if __name__ == "__main__":

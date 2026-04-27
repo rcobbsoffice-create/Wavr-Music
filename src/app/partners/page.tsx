@@ -30,6 +30,7 @@ export default function PartnersPage() {
     <div className="bg-gray-950 min-h-screen text-gray-300">
       {/* Hero */}
       <section className="pt-32 pb-24 border-b border-gray-900 overflow-hidden relative">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
           <h1 className="text-5xl sm:text-6xl font-black text-white mb-6 tracking-tight">
             Better <span className="text-red-600">Together</span>
           </h1>

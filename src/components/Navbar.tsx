@@ -77,6 +77,12 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
             <Link
+              href="/"
+              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
+            >
+              Home
+            </Link>
+            <Link
               href="/marketplace"
               className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
             >
@@ -142,7 +148,7 @@ export default function Navbar() {
                   href="/signup"
                   className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200 shadow-md"
                 >
-                  Get Started
+                  Start for Free
                 </Link>
               </>
             )}
@@ -183,6 +189,13 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-gray-900 border-t border-gray-800 px-4 py-4 space-y-3">
+          <Link
+            href="/"
+            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
+            onClick={() => setMobileOpen(false)}
+          >
+            Home
+          </Link>
           <Link
             href="/marketplace"
             className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"

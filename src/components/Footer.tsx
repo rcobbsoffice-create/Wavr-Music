@@ -48,18 +48,20 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4">Platform</h4>
             <ul className="space-y-3">
-              {["Marketplace", "Merch Store", "Analytics", "Dashboard"].map(
-                (item) => (
-                  <li key={item}>
-                    <Link
-                      href={`/${item.toLowerCase().replace(" ", "")}`}
-                      className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-                    >
-                      {item}
-                    </Link>
-                  </li>
-                )
-              )}
+              {[
+                { name: "Home", href: "/" },
+                { name: "Marketplace", href: "/marketplace" },
+                { name: "Merch Store", href: "/merch" },
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

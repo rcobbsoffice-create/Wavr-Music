@@ -165,7 +165,7 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
-              href="/dashboard"
+              href="/signup"
               className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-4 rounded-full text-lg shadow-md"
             >
               Start for Free
@@ -457,7 +457,7 @@ export default function HomePage() {
             Start free today. No credit card required.
           </p>
           <Link
-            href="/dashboard"
+            href="/signup"
             className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-10 py-4 rounded-full text-xl shadow-md"
           >
             Get Started — It&apos;s Free

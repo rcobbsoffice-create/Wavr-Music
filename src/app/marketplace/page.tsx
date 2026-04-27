@@ -22,9 +22,11 @@ export default function MarketplacePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
+    console.log("Fetching beats from /api/beats...");
     fetch("/api/beats")
       .then((r) => r.json())
       .then((data) => {
+        console.log("Beats data received:", data);
         setBeats(Array.isArray(data) ? data : []);
         setLoading(false);
       })
@@ -38,6 +40,8 @@ export default function MarketplacePage() {
   const featuredBeats = Array.isArray(beats) ? beats.filter((b) => b.featured) : [];
 
   const filteredBeats = useMemo(() => {
+    if (!Array.isArray(beats)) return [];
+    
     let result = beats.filter((b) => {
       if (selectedGenre !== "All" && b.genre !== selectedGenre) return false;
       if (selectedMood !== "All" && b.mood !== selectedMood) return false;
@@ -52,11 +56,11 @@ export default function MarketplacePage() {
       return true;
     });
 
-    if (sortBy === "featured") result = result.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
-    else if (sortBy === "popular") result = result.sort((a, b) => b.plays - a.plays);
-    else if (sortBy === "price-low") result = result.sort((a, b) => a.priceBasic - b.priceBasic);
-    else if (sortBy === "price-high") result = result.sort((a, b) => b.priceBasic - a.priceBasic);
-    else if (sortBy === "bpm-low") result = result.sort((a, b) => a.bpm - b.bpm);
+    if (sortBy === "featured") result = [...result].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    else if (sortBy === "popular") result = [...result].sort((a, b) => b.plays - a.plays);
+    else if (sortBy === "price-low") result = [...result].sort((a, b) => a.priceBasic - b.priceBasic);
+    else if (sortBy === "price-high") result = [...result].sort((a, b) => b.priceBasic - a.priceBasic);
+    else if (sortBy === "bpm-low") result = [...result].sort((a, b) => a.bpm - b.bpm);
 
     return result;
   }, [beats, selectedGenre, selectedMood, bpmMin, bpmMax, priceMax, searchQuery, sortBy]);

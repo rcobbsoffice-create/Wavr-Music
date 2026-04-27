@@ -16,6 +16,9 @@ export async function GET() {
         licenses: {
           select: { price: true },
         },
+        stems: {
+          select: { type: true, status: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -28,12 +31,16 @@ export async function GET() {
       key: b.key,
       mood: b.mood ?? "",
       priceBasic: b.priceBasic,
+      pricePremium: b.pricePremium,
+      priceExclusive: b.priceExclusive,
       plays: b.plays,
       sales: b.licenses.length,
       revenue: b.licenses.reduce((sum, l) => sum + l.price, 0),
       status: b.status,
       featured: b.featured,
       audioFile: b.audioFile,
+      artwork: b.artwork,
+      stems: b.stems,
       createdAt: b.createdAt.toISOString(),
     }));
 

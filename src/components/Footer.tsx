@@ -8,7 +8,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/">
-              <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+              <span className="text-2xl font-black tracking-tighter text-red-600">
                 WAVR
               </span>
             </Link>
@@ -19,25 +19,25 @@ export default function Footer() {
             <div className="flex gap-4 mt-5">
               <a
                 href="#"
-                className="text-gray-600 hover:text-purple-400 text-sm font-medium transition-colors"
+                className="text-gray-600 hover:text-red-400 text-sm font-medium transition-colors"
               >
                 Twitter
               </a>
               <a
                 href="#"
-                className="text-gray-600 hover:text-purple-400 text-sm font-medium transition-colors"
+                className="text-gray-600 hover:text-red-400 text-sm font-medium transition-colors"
               >
                 Instagram
               </a>
               <a
                 href="#"
-                className="text-gray-600 hover:text-purple-400 text-sm font-medium transition-colors"
+                className="text-gray-600 hover:text-red-400 text-sm font-medium transition-colors"
               >
                 TikTok
               </a>
               <a
                 href="#"
-                className="text-gray-600 hover:text-purple-400 text-sm font-medium transition-colors"
+                className="text-gray-600 hover:text-red-400 text-sm font-medium transition-colors"
               >
                 YouTube
               </a>
@@ -67,14 +67,20 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4">Company</h4>
             <ul className="space-y-3">
-              {["About Us", "Careers", "Blog", "Press", "Partners"].map((item) => (
-                <li key={item}>
-                  <a
-                    href="#"
+              {[
+                { name: "About Us", href: "/about" },
+                { name: "Careers", href: "/careers" },
+                { name: "News", href: "/news" },
+                { name: "Press", href: "/press" },
+                { name: "Partners", href: "/partners" },
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
                     className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
                   >
-                    {item}
-                  </a>
+                    {item.name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -84,18 +90,22 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4">Support</h4>
             <ul className="space-y-3">
-              {["Help Center", "Contact Us", "Privacy Policy", "Terms of Service", "Cookie Policy"].map(
-                (item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                )
-              )}
+              {[
+                { name: "Help Center", href: "/support/help" },
+                { name: "Contact Us", href: "/support/contact" },
+                { name: "Privacy Policy", href: "/privacy" },
+                { name: "Terms of Service", href: "/terms" },
+                { name: "Cookie Policy", href: "/cookies" },
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -106,7 +116,7 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-2">
             <span className="text-gray-600 text-xs">Trusted by</span>
-            <span className="text-purple-400 font-semibold text-sm">50,000+</span>
+            <span className="text-red-500 font-semibold text-sm">50,000+</span>
             <span className="text-gray-600 text-xs">independent artists</span>
           </div>
         </div>

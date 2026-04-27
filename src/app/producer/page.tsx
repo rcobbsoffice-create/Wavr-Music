@@ -3,6 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { usePlayer } from "@/components/PlayerContext";
+
+const genreGradients: Record<string, string> = {
+  Trap:      "from-red-900 via-gray-900 to-black",
+  "R&B":     "from-blue-900 via-indigo-900 to-black",
+  Afrobeats: "from-orange-800 via-yellow-900 to-black",
+  Drill:     "from-gray-800 via-slate-900 to-black",
+  Pop:       "from-pink-900 via-fuchsia-900 to-black",
+  "Hip-Hop": "from-purple-900 via-violet-900 to-black",
+};
+
 
 interface MyBeat {
   id: string;
@@ -12,16 +23,33 @@ interface MyBeat {
   key: string;
   mood: string;
   priceBasic: number;
+  pricePremium: number;
+  priceExclusive: number;
   plays: number;
   sales: number;
   revenue: number;
   status: string;
   featured: boolean;
   audioFile?: string | null;
+  artwork?: string | null;
+  stems?: { type: string; status: string }[];
   createdAt: string;
 }
 
-type Tab = "overview" | "beats" | "earnings" | "analytics" | "licensing" | "payouts" | "settings";
+
+type Tab = "overview" | "beats" | "merch" | "earnings" | "analytics" | "licensing" | "payouts" | "settings";
+
+const sidebarLinks = [
+  { label: "Overview",  tab: "overview",  icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+  { label: "My Beats",  tab: "beats",     icon: "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" },
+  { label: "My Merch",  tab: "merch",     icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" },
+  { label: "Earnings",  tab: "earnings",  icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 16v-1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { label: "Analytics", tab: "analytics", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+  { label: "Licensing", tab: "licensing", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+  { label: "Payouts",   tab: "payouts",   icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
+  { label: "Settings",  tab: "settings",  icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
+];
+
 
 interface ProducerStats {
   stats: { totalEarnings: number; beatsSold: number; activeLicenses: number; monthlyRevenue: number };
@@ -144,16 +172,223 @@ function PayoutsTab({ producerStats }: { producerStats: ProducerStats | null }) 
   );
 }
 
+function MerchTab() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("T-Shirts");
+  const [price, setPrice] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    fetchMerch();
+  }, []);
+
+  async function fetchMerch() {
+    try {
+      const res = await fetch("/api/merch/mine");
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch {}
+    setLoading(false);
+  }
+
+  async function handleAddMerch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !price || !file) return;
+    setAdding(true);
+    const fd = new FormData();
+    fd.append("name", name);
+    fd.append("category", category);
+    fd.append("price", price);
+    fd.append("image", file);
+    try {
+      await fetch("/api/merch", { method: "POST", body: fd });
+      setName(""); setPrice(""); setFile(null);
+      fetchMerch();
+    } catch {}
+    setAdding(false);
+  }
+
+  const [printfulConnected, setPrintfulConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(false);
+
+  // Check connection status on load
+  useEffect(() => {
+    fetch("/api/profile")
+      .then(r => r.json())
+      .then(d => { if (d.printfulToken) setPrintfulConnected(true); })
+      .catch(() => {});
+  }, []);
+
+  async function handleConnectPrintful() {
+    if (!tokenInput) return;
+    try {
+      const res = await fetch("/api/printful/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenInput }),
+      });
+      if (res.ok) {
+        setPrintfulConnected(true);
+        setShowTokenInput(false);
+      } else {
+        alert("Failed to connect Printful.");
+      }
+    } catch {
+      alert("Network error connecting Printful.");
+    }
+  }
+
+  async function handleSyncPrintful() {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/printful/sync", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Successfully synced ${data.count} products from Printful!`);
+        fetchMerch();
+      } else {
+        alert(data.error || "Failed to sync Printful products.");
+      }
+    } catch {
+      alert("Network error during sync.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-black text-white">My Merch</h1>
+        
+        {/* Printful Integration Box */}
+        <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-2 px-4">
+          <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-white text-xs font-bold leading-tight">Printful Dropshipping</p>
+            <p className="text-gray-500 text-[10px]">Zero inventory. Auto-fulfillment.</p>
+          </div>
+          {printfulConnected ? (
+            <button 
+              onClick={handleSyncPrintful}
+              disabled={syncing}
+              className="ml-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-700 transition-colors"
+            >
+              {syncing ? "Syncing..." : "Sync Store"}
+            </button>
+          ) : showTokenInput ? (
+            <div className="flex items-center gap-2 ml-2">
+              <input 
+                type="password" 
+                placeholder="Access Token" 
+                value={tokenInput} 
+                onChange={(e) => setTokenInput(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none w-32"
+              />
+              <button 
+                onClick={handleConnectPrintful}
+                className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowTokenInput(true)}
+              className="ml-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Connect
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Add Merch Form */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-white mb-4">Add New Merch Product</h2>
+        <form onSubmit={handleAddMerch} className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1">Product Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. Logo Hoodie" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1">Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500">
+              <option>T-Shirts</option>
+              <option>Hoodies</option>
+              <option>Hats</option>
+              <option>Phone Cases</option>
+              <option>Tote Bags</option>
+              <option>Posters</option>
+              <option>Mugs</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1">Price ($)</label>
+            <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" step="0.01" required className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="29.99" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1">Image</label>
+            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900/50" />
+          </div>
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={adding} className="bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-xl transition-all">
+              {adding ? "Adding..." : "Add Product"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Merch List */}
+      <div>
+        <h2 className="text-lg font-bold text-white mb-4">Your Products</h2>
+        {loading ? (
+          <p className="text-gray-500">Loading products...</p>
+        ) : products.length === 0 ? (
+          <p className="text-gray-500">You haven't added any merch yet.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {products.map((p) => (
+              <div key={p.id} className="bg-gray-800 rounded-xl p-4 flex gap-4">
+                <img src={p.images?.[0] || "/placeholder.png"} alt={p.name} className="w-20 h-20 object-cover rounded-lg bg-gray-900" />
+                <div>
+                  <h3 className="text-white font-bold text-sm">{p.name}</h3>
+                  <p className="text-gray-400 text-xs">{p.category}</p>
+                  <p className="text-purple-400 font-bold mt-2">${p.price.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string; userEmail?: string; userPlan?: string }) {
   const [name, setName] = useState(userName ?? "");
   const [bio, setBio] = useState("");
+  const [themeColor, setThemeColor] = useState("purple");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
-      .then((d) => { setName(d.name ?? ""); setBio(d.bio ?? ""); })
+      .then((d) => { 
+        setName(d.name ?? ""); 
+        setBio(d.bio ?? ""); 
+        setThemeColor(d.themeColor ?? "purple");
+      })
       .catch(() => {});
   }, []);
 
@@ -161,14 +396,22 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
     e.preventDefault();
     setSaving(true); setMsg("");
     try {
+      const fd = new FormData();
+      fd.append("name", name);
+      fd.append("bio", bio);
+      fd.append("themeColor", themeColor);
+      if (avatarFile) fd.append("avatar", avatarFile);
+      if (coverFile) fd.append("coverImage", coverFile);
+
       const res = await fetch("/api/profile", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, bio }),
+        body: fd,
       });
       const data = await res.json();
       if (!res.ok) { setMsg(data.error ?? "Failed to save"); return; }
       setMsg("Profile updated successfully.");
+      setAvatarFile(null);
+      setCoverFile(null);
     } catch { setMsg("Network error."); }
     finally { setSaving(false); }
   }
@@ -178,8 +421,9 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
       <h1 className="text-2xl font-black text-white">Settings</h1>
       <div className="grid sm:grid-cols-2 gap-6">
         <form onSubmit={handleSave} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-          <h2 className="text-white font-bold">Profile Settings</h2>
+          <h2 className="text-white font-bold">Profile Customization</h2>
           {msg && <p className={`text-sm ${msg.includes("success") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
+          
           <div>
             <label className="text-gray-400 text-xs font-medium block mb-1">Display Name</label>
             <input
@@ -188,25 +432,56 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
             />
           </div>
-          <div>
-            <label className="text-gray-400 text-xs font-medium block mb-1">Email</label>
-            <input
-              value={userEmail ?? ""} disabled
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-2.5 text-gray-500 text-sm cursor-not-allowed"
-            />
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1">Avatar Image</label>
+              <input
+                type="file" accept="image/*"
+                onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-gray-800 file:text-gray-300"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1">Cover Image</label>
+              <input
+                type="file" accept="image/*"
+                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-gray-800 file:text-gray-300"
+              />
+            </div>
           </div>
+
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1">Theme Color</label>
+            <select
+              value={themeColor} onChange={(e) => setThemeColor(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
+            >
+              <option value="purple">Purple (Default)</option>
+              <option value="blue">Ocean Blue</option>
+              <option value="red">Ruby Red</option>
+              <option value="green">Emerald Green</option>
+              <option value="gray">Monochrome</option>
+              <option value="crimson-nights">Crimson Nights (Red/Navy)</option>
+              <option value="cyber-yellow">Cyber Yellow (Yellow/Slate)</option>
+              <option value="neon-blue">Neon Blue (Deep Blue/Cyan)</option>
+            </select>
+          </div>
+
           <div>
             <label className="text-gray-400 text-xs font-medium block mb-1">Bio <span className="text-gray-600">({bio.length}/500)</span></label>
             <textarea
               value={bio} onChange={(e) => setBio(e.target.value)}
-              maxLength={500} rows={4}
+              maxLength={500} rows={3}
               placeholder="Tell fans about yourself…"
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 resize-none"
             />
           </div>
+          
           <button
             type="submit" disabled={saving}
-            className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 disabled:opacity-50 text-white text-sm font-bold px-5 py-3 rounded-xl transition-colors"
           >{saving ? "Saving…" : "Save Changes"}</button>
         </form>
 
@@ -235,6 +510,8 @@ import DashboardHeader from "@/components/DashboardHeader";
 export default function ProducerDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { currentBeat, isPlaying, setCurrentBeat } = usePlayer();
+
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -266,7 +543,29 @@ export default function ProducerDashboard() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [detectingBpm, setDetectingBpm] = useState(false);
+  const [detectError, setDetectError] = useState("");
+
+  // Edit beat state
+  const [editBeat, setEditBeat] = useState<MyBeat | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editGenre, setEditGenre] = useState("");
+  const [editBpm, setEditBpm] = useState("");
+  const [editKey, setEditKey] = useState("");
+  const [editMood, setEditMood] = useState("");
+  const [editTags, setEditTags] = useState("");
+  const [editPriceBasic, setEditPriceBasic] = useState("");
+  const [editPricePremium, setEditPricePremium] = useState("");
+  const [editPriceExclusive, setEditPriceExclusive] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editArtworkFile, setEditArtworkFile] = useState<File | null>(null);
+  const [editArtworkPreview, setEditArtworkPreview] = useState<string | null>(null);
+  const editArtworkRef = useRef<HTMLInputElement>(null);
+
   const [collabs, setCollabs] = useState<{ email: string; split: string; role: string }[]>([]);
+  const [separatingStems, setSeparatingStems] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -280,6 +579,8 @@ export default function ProducerDashboard() {
     try {
       const res = await fetch("/api/beats/mine");
       if (res.ok) setMyBeatsData(await res.json());
+    } catch (error) {
+      console.warn("Could not fetch beats:", error);
     } finally {
       setBeatsLoading(false);
     }
@@ -329,6 +630,91 @@ export default function ProducerDashboard() {
   function handleLogout() {
     logout();
     router.push("/");
+  }
+
+  function openEditModal(beat: MyBeat) {
+    setEditBeat(beat);
+    setEditTitle(beat.title);
+    setEditGenre(beat.genre);
+    setEditBpm(String(beat.bpm));
+    setEditKey(beat.key);
+    setEditMood(beat.mood ?? "");
+    setEditTags("");
+    setEditPriceBasic(String(beat.priceBasic));
+    setEditPricePremium(String(beat.pricePremium ?? ""));
+    setEditPriceExclusive(String(beat.priceExclusive ?? ""));
+    setEditStatus(beat.status);
+    setEditError("");
+    setEditArtworkFile(null);
+    setEditArtworkPreview(beat.artwork ?? null);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editBeat) return;
+    setEditSaving(true);
+    setEditError("");
+    try {
+      let res: Response;
+      if (editArtworkFile) {
+        // Use FormData so we can send the image file
+        const fd = new FormData();
+        fd.append("title", editTitle.trim());
+        fd.append("genre", editGenre);
+        fd.append("bpm", editBpm);
+        fd.append("key", editKey.trim());
+        fd.append("mood", editMood);
+        if (editTags) fd.append("tags", JSON.stringify(editTags.split(",").map(t => t.trim()).filter(Boolean)));
+        fd.append("priceBasic", editPriceBasic);
+        fd.append("pricePremium", editPricePremium);
+        fd.append("priceExclusive", editPriceExclusive);
+        fd.append("status", editStatus);
+        fd.append("artwork", editArtworkFile);
+        res = await fetch(`/api/beats/${editBeat.id}`, { method: "PATCH", body: fd });
+      } else {
+        res = await fetch(`/api/beats/${editBeat.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editTitle.trim(),
+            genre: editGenre,
+            bpm: parseInt(editBpm, 10),
+            key: editKey.trim(),
+            mood: editMood,
+            tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+            priceBasic: parseFloat(editPriceBasic),
+            pricePremium: parseFloat(editPricePremium),
+            priceExclusive: parseFloat(editPriceExclusive),
+            status: editStatus,
+          }),
+        });
+      }
+      if (!res.ok) {
+        const data = await res.json();
+        setEditError(data.error ?? "Update failed");
+        return;
+      }
+      setEditBeat(null);
+      setEditArtworkFile(null);
+      setEditArtworkPreview(null);
+      fetchMyBeats();
+
+    } catch {
+      setEditError("Network error. Try again.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function deleteBeat(beatId: string) {
+    if (!confirm("Are you sure you want to delete this beat? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/beats/${beatId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchMyBeats();
+    } catch {
+      alert("Failed to delete beat. Try again.");
+    }
   }
 
   const sidebarLinksList = sidebarLinks.map(link => ({
@@ -557,47 +943,155 @@ export default function ProducerDashboard() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {myBeatsData.map((beat) => (
                   <div key={beat.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-purple-700/40 transition-all group">
-                    <div className="h-36 bg-gradient-to-br from-purple-900 via-gray-900 to-black relative">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <svg className="w-10 h-10 text-purple-700/60" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                        </svg>
-                      </div>
-                      <div className="absolute top-3 left-3">
-                        <span className="bg-black/60 text-xs text-gray-300 px-2 py-1 rounded-full">{beat.genre}</span>
-                      </div>
-                      <div className="absolute top-3 right-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                          beat.status === "active" ? "bg-green-900/60 text-green-300 border border-green-700/30" :
-                          beat.status === "draft" ? "bg-gray-800 text-gray-400 border border-gray-700" :
-                          "bg-amber-900/40 text-amber-300 border border-amber-700/30"
-                        }`}>{beat.status === "active" ? "Live" : beat.status === "draft" ? "Draft" : beat.status}</span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-white font-bold text-sm mb-1">{beat.title}</h3>
-                      <p className="text-gray-500 text-xs mb-3">{beat.bpm} BPM · {beat.key}</p>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-gray-800 rounded-lg p-2">
-                          <p className="text-white text-xs font-bold">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</p>
-                          <p className="text-gray-500 text-xs">Plays</p>
+
+                     {/* Artwork + Play Button */}
+                     <div
+                       className={`h-44 relative bg-gradient-to-br ${genreGradients[beat.genre] || "from-purple-900 via-gray-900 to-black"} ${beat.audioFile ? "cursor-pointer" : "cursor-default"}`}
+                       onClick={() => {
+                         if (!beat.audioFile) return;
+                         setCurrentBeat({
+                           id: beat.id,
+                           title: beat.title,
+                           producer: user?.name ?? "You",
+                           producerId: user?.id ?? "",
+                           genre: beat.genre,
+                           bpm: beat.bpm,
+                           key: beat.key,
+                           mood: beat.mood ?? "",
+                           tags: [],
+                           priceBasic: beat.priceBasic,
+                           pricePremium: beat.pricePremium,
+                           priceExclusive: beat.priceExclusive,
+                           plays: beat.plays,
+                           featured: beat.featured,
+                           status: beat.status,
+                           artwork: beat.artwork ?? null,
+                           audioFile: beat.audioFile ?? null,
+                         });
+                       }}
+                     >
+                       {/* Artwork image (if available) */}
+                       {beat.artwork ? (
+                         <img
+                           src={beat.artwork}
+                           alt={beat.title}
+                           className="absolute inset-0 w-full h-full object-cover opacity-70"
+                         />
+                       ) : (
+                         <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                           <svg viewBox="0 0 200 60" className="w-full h-16">
+                             {Array.from({ length: 32 }, (_, i) => (
+                               <rect key={i} x={i * 6.25} y={30 - (i % 5) * 8} width="4" height={16 + (i % 7) * 5} fill="white" opacity={0.6} />
+                             ))}
+                           </svg>
+                         </div>
+                       )}
+
+                       {/* Play / Pause button — hidden if no audio */}
+                       <div className="absolute inset-0 flex items-center justify-center">
+                         {beat.audioFile ? (
+                           <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-xl ${
+                             currentBeat?.id === beat.id && isPlaying
+                               ? "bg-purple-500 scale-110 shadow-purple-500/50"
+                               : "bg-black/50 backdrop-blur-sm group-hover:bg-purple-600/80 group-hover:scale-110"
+                           }`}>
+                             {currentBeat?.id === beat.id && isPlaying ? (
+                               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                               </svg>
+                             ) : (
+                               <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                 <path d="M8 5v14l11-7z" />
+                               </svg>
+                             )}
+                           </div>
+                         ) : (
+                           <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center">
+                               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                               </svg>
+                             </div>
+                             <span className="text-gray-400 text-xs bg-black/60 px-2 py-0.5 rounded-full">No audio file</span>
+                           </div>
+                         )}
+                       </div>
+
+                       {/* Genre badge */}
+                       <div className="absolute top-3 left-3">
+                         <span className="bg-black/60 backdrop-blur-sm text-xs text-gray-300 px-2.5 py-1 rounded-full border border-gray-700/50">{beat.genre}</span>
+                       </div>
+
+                       {/* Status badge */}
+                       <div className="absolute top-3 right-3">
+                         <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                           beat.status === "active" ? "bg-green-900/60 text-green-300 border border-green-700/30" :
+                           beat.status === "draft"  ? "bg-gray-800 text-gray-400 border border-gray-700" :
+                           "bg-amber-900/40 text-amber-300 border border-amber-700/30"
+                         }`}>{beat.status === "active" ? "Live" : beat.status === "draft" ? "Draft" : beat.status}</span>
+                       </div>
+
+                       {/* Play count */}
+                       <div className="absolute bottom-3 right-3 flex items-center gap-1">
+                         <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                         <span className="text-xs text-gray-400">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</span>
+                       </div>
+                     </div>
+
+                      <div className="p-4">
+                        <h3 className="text-white font-bold text-sm mb-1">{beat.title}</h3>
+                        <p className="text-gray-500 text-xs mb-3">{beat.bpm} BPM · {beat.key}</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-gray-800 rounded-lg p-2">
+                            <p className="text-white text-xs font-bold">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</p>
+                            <p className="text-gray-500 text-xs">Plays</p>
+                          </div>
+                          <div className="bg-gray-800 rounded-lg p-2">
+                            <p className="text-white text-xs font-bold">{beat.sales}</p>
+                            <p className="text-gray-500 text-xs">Sales</p>
+                          </div>
+                          <div className="bg-gray-800 rounded-lg p-2">
+                            <p className="text-purple-400 text-xs font-bold">${beat.revenue.toFixed(0)}</p>
+                            <p className="text-gray-500 text-xs">Revenue</p>
+                          </div>
                         </div>
-                        <div className="bg-gray-800 rounded-lg p-2">
-                          <p className="text-white text-xs font-bold">{beat.sales}</p>
-                          <p className="text-gray-500 text-xs">Sales</p>
-                        </div>
-                        <div className="bg-gray-800 rounded-lg p-2">
-                          <p className="text-purple-400 text-xs font-bold">${beat.revenue.toFixed(0)}</p>
-                          <p className="text-gray-500 text-xs">Revenue</p>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                           <button onClick={() => openEditModal(beat)} className="flex-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-[10px] font-bold py-2 rounded-lg transition-colors border border-purple-700/30">Edit</button>
+                           <button onClick={() => deleteBeat(beat.id)} className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 text-[10px] font-bold py-2 rounded-lg transition-colors border border-red-800/30">Delete</button>
+                          {beat.audioFile && (
+                            <button
+                              disabled={separatingStems[beat.id] || beat.stems?.some(s => s.status === "processing")}
+                              onClick={async () => {
+                                setSeparatingStems(prev => ({ ...prev, [beat.id]: true }));
+                                try {
+                                  const res = await fetch(`/api/beats/${beat.id}/stems`, { method: "POST" });
+                                  if (!res.ok) {
+                                    const d = await res.json();
+                                    alert(d.error || "Failed");
+                                  } else {
+                                    fetchMyBeats();
+                                  }
+                                } catch {
+                                  alert("Error");
+                                } finally {
+                                  setSeparatingStems(prev => ({ ...prev, [beat.id]: false }));
+                                }
+                              }}
+                              className={`flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors border ${
+                                beat.stems?.some(s => s.status === "ready")
+                                  ? "bg-green-900/20 text-green-400 border-green-800/30"
+                                  : beat.stems?.some(s => s.status === "processing")
+                                  ? "bg-yellow-900/20 text-yellow-400 border-yellow-800/30 animate-pulse"
+                                  : "bg-indigo-900/20 text-indigo-300 border-indigo-800/30 hover:bg-indigo-900/40"
+                              }`}
+                            >
+                              {beat.stems?.some(s => s.status === "ready") ? "Stems Ready" : 
+                               beat.stems?.some(s => s.status === "processing") ? "Splitting..." :
+                               separatingStems[beat.id] ? "Starting..." : "✨ Split Stems"}
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-3">
-                        <button className="flex-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-xs font-semibold py-2 rounded-lg transition-colors border border-purple-700/30">Edit</button>
-                        {beat.audioFile && (
-                          <a href={beat.audioFile} target="_blank" rel="noreferrer" className="flex-1 text-center bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs font-semibold py-2 rounded-lg transition-colors border border-gray-700">Preview</a>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -847,11 +1341,189 @@ export default function ProducerDashboard() {
           <PayoutsTab producerStats={producerStats} />
         )}
 
+        {/* Merch Tab */}
+        {activeTab === "merch" && (
+          <MerchTab />
+        )}
+
         {/* Settings Tab */}
         {activeTab === "settings" && (
           <ProducerSettings userName={user?.name} userEmail={user?.email} userPlan={user?.plan} />
         )}
       </main>
+
+      {/* Edit Beat Modal */}
+      {editBeat && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <h2 className="text-white font-bold text-lg">Edit Beat</h2>
+                <button 
+                  type="button"
+                  onClick={async (e) => {
+                    const btn = e.currentTarget;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = "✨ Generating...";
+                    btn.disabled = true;
+                    try {
+                      const res = await fetch("/api/ai/suggest-beat", {
+                        method: "POST",
+                        body: JSON.stringify({ genre: editGenre, mood: editMood }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setEditTitle(data.title);
+                        setEditBpm(data.bpm);
+                        setEditKey(data.key);
+                        
+                        if (data.artwork) {
+                          const imgRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(data.artwork)}`);
+                          if (imgRes.ok) {
+                            const blob = await imgRes.blob();
+                            const file = new File([blob], "ai-artwork.png", { type: "image/png" });
+                            setEditArtworkFile(file);
+                            setEditArtworkPreview(URL.createObjectURL(file));
+                          }
+                        }
+                      }
+                    } catch (err) {
+                      console.error("AI Suggestion Error:", err);
+                    } finally {
+                      btn.innerHTML = originalText;
+                      btn.disabled = false;
+                    }
+                  }}
+                  className="bg-purple-900/40 hover:bg-purple-800/60 text-purple-300 text-[10px] font-black uppercase tracking-tighter px-2 py-1 rounded border border-purple-700/30 flex items-center gap-1 transition-all"
+                >
+                  <span className="text-sm">✨</span> AI Suggest
+                </button>
+              </div>
+              <button onClick={() => setEditBeat(null)} className="text-gray-500 hover:text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={saveEdit} className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1">Title *</label>
+                <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">Genre *</label>
+                  <select value={editGenre} onChange={e => setEditGenre(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500">
+                    <option value="">Select genre</option>
+                    {["Trap","Hip-Hop","R&B","Drill","Pop","Afrobeats","Lo-Fi","House","Other"].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">Mood</label>
+                  <select value={editMood} onChange={e => setEditMood(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500">
+                    <option value="">Select mood</option>
+                    {["Dark","Chill","Energetic","Aggressive","Happy","Melancholic","Motivated","Romantic"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">BPM *</label>
+                  <input value={editBpm} onChange={e => setEditBpm(e.target.value)} type="number" min="40" max="250" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">Key *</label>
+                  <input value={editKey} onChange={e => setEditKey(e.target.value)} placeholder="e.g. F# Minor" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">Status</label>
+                  <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500">
+                    <option value="active">Active (Live)</option>
+                    <option value="draft">Draft (Hidden)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">Tags <span className="text-gray-600">(comma separated)</span></label>
+                  <input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="dark, heavy, melodic" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-400 text-xs font-medium mb-2">Pricing</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Basic", value: editPriceBasic, set: setEditPriceBasic },
+                    { label: "Premium", value: editPricePremium, set: setEditPricePremium },
+                    { label: "Exclusive", value: editPriceExclusive, set: setEditPriceExclusive },
+                  ].map(({ label, value, set }) => (
+                    <div key={label}>
+                      <label className="text-gray-500 text-xs block mb-1">{label}</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <input value={value} onChange={e => set(e.target.value)} type="number" step="0.01" min="0" className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Artwork Upload */}
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-2">Artwork</label>
+                <div
+                  className="relative w-full h-36 rounded-xl border-2 border-dashed border-gray-700 hover:border-purple-600 transition-colors cursor-pointer overflow-hidden bg-gray-800/50 group"
+                  onClick={() => editArtworkRef.current?.click()}
+                >
+                  {editArtworkPreview ? (
+                    <>
+                      <img src={editArtworkPreview} alt="artwork" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-6 h-6 text-white mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span className="text-white text-xs font-medium">Change artwork</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <span className="text-gray-500 text-xs">Click to upload artwork</span>
+                      <span className="text-gray-600 text-xs">PNG, JPG, WEBP — max 5MB</span>
+                    </div>
+                  )}
+                  <input
+                    ref={editArtworkRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setEditArtworkFile(file);
+                      setEditArtworkPreview(URL.createObjectURL(file));
+                    }}
+                  />
+                </div>
+                {editArtworkFile && (
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-gray-400 text-xs truncate max-w-[200px]">{editArtworkFile.name}</span>
+                    <button
+                      type="button"
+                      className="text-gray-600 hover:text-red-400 text-xs transition-colors"
+                      onClick={() => { setEditArtworkFile(null); setEditArtworkPreview(editBeat?.artwork ?? null); }}
+                    >✕ Remove</button>
+                  </div>
+                )}
+              </div>
+
+              {editError && <p className="text-red-400 text-xs bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2">{editError}</p>}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setEditBeat(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-xl transition-colors border border-gray-700">Cancel</button>
+                <button type="submit" disabled={editSaving} className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
@@ -886,7 +1558,7 @@ export default function ProducerDashboard() {
                 ) : (
                   <>
                     <p className="text-gray-400 text-sm">Click to select audio file</p>
-                    <p className="text-gray-600 text-xs mt-1">MP3, WAV, FLAC up to 50MB</p>
+                    <p className="text-gray-600 text-xs mt-1">MP3, WAV, FLAC up to 500MB</p>
                   </>
                 )}
               </div>
@@ -923,6 +1595,60 @@ export default function ProducerDashboard() {
                   <label className="text-gray-400 text-xs font-medium block mb-1">Key *</label>
                   <input value={uploadKey} onChange={e => setUploadKey(e.target.value)} placeholder="e.g. F# Minor" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
                 </div>
+
+                {/* Auto-detect BPM & Key */}
+                <div className="col-span-2">
+                  <button
+                    type="button"
+                    disabled={!uploadFile || detectingBpm}
+                    onClick={async () => {
+                      if (!uploadFile) return;
+                      setDetectingBpm(true);
+                      setDetectError("");
+                      try {
+                        const fd = new FormData();
+                        fd.append("audio", uploadFile);
+                        if (uploadGenre) fd.append("genre", uploadGenre);
+                        if (uploadMood) fd.append("mood", uploadMood);
+                        
+                        const res = await fetch("/api/beats/analyze", { method: "POST", body: fd });
+                        const data = await res.json();
+                        if (!res.ok) { setDetectError(data.error ?? "Detection failed"); return; }
+                        
+                        if (data.bpm)  setUploadBpm(String(data.bpm));
+                        if (data.key)  setUploadKey(data.key);
+                        if (data.suggestedTitle && !uploadTitle.trim()) {
+                          setUploadTitle(data.suggestedTitle);
+                        }
+
+                      } catch {
+                        setDetectError("Could not reach analysis server. Is stems_server.py running?");
+                      } finally {
+                        setDetectingBpm(false);
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-700 to-purple-600 hover:from-violet-600 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold py-2.5 rounded-xl transition-all"
+                  >
+                    {detectingBpm ? (
+                      <>
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Analyzing audio…
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                        </svg>
+                        {uploadFile ? "✨ Auto-detect BPM & Key" : "Select an audio file first"}
+                      </>
+                    )}
+                  </button>
+                  {detectError && <p className="text-red-400 text-xs mt-1.5">{detectError}</p>}
+                </div>
+
                 <div className="col-span-2">
                   <label className="text-gray-400 text-xs font-medium block mb-1">Tags <span className="text-gray-600">(comma separated)</span></label>
                   <input value={uploadTags} onChange={e => setUploadTags(e.target.value)} placeholder="dark, heavy, melodic" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
@@ -1013,6 +1739,8 @@ export default function ProducerDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
+

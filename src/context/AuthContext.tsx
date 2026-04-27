@@ -9,7 +9,9 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   verified?: boolean;
+  plan?: string;
 }
+
 
 interface AuthContextType {
   user: AuthUser | null;

@@ -7,29 +7,29 @@ const features = [
     iconPath: "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z",
     title: "Beat Marketplace",
     desc: "List your beats with flexible licensing — basic, premium, and exclusive. Set your own prices and keep up to 100% of earnings.",
-    color: "from-purple-600/20 to-purple-900/5 border-purple-700/30",
-    accent: "text-purple-400",
+    color: "from-red-600/20 to-red-900/5 border-red-700/30",
+    accent: "text-red-400",
   },
   {
     iconPath: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
     title: "Flexible Licensing",
     desc: "Offer basic, premium, and exclusive licenses. Buyers get instant downloads and you keep control of your catalog.",
-    color: "from-fuchsia-600/20 to-fuchsia-900/5 border-fuchsia-700/30",
-    accent: "text-fuchsia-400",
+    color: "from-gray-600/20 to-gray-900/5 border-gray-700/30",
+    accent: "text-gray-400",
   },
   {
     iconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
     title: "Merch Store",
     desc: "Launch your own merch line with zero inventory. We handle printing, shipping, and fulfillment.",
-    color: "from-violet-600/20 to-violet-900/5 border-violet-700/30",
-    accent: "text-violet-400",
+    color: "from-red-600/20 to-red-900/5 border-red-700/30",
+    accent: "text-red-400",
   },
   {
     iconPath: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
     title: "Advanced Analytics",
     desc: "Deep insights into beat sales, revenue, audience demographics, and geographic data in real-time.",
-    color: "from-indigo-600/20 to-indigo-900/5 border-indigo-700/30",
-    accent: "text-indigo-400",
+    color: "from-gray-600/20 to-gray-900/5 border-gray-700/30",
+    accent: "text-gray-400",
   },
 ];
 
@@ -122,10 +122,7 @@ export default function HomePage() {
     <div className="overflow-x-hidden">
       {/* Hero */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gray-950">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-purple-700/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 left-1/4 w-[400px] h-[300px] bg-fuchsia-700/10 rounded-full blur-[100px]" />
-        </div>
+        <div className="absolute inset-0 bg-background" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20">
           <div className="inline-flex items-center gap-2 bg-purple-900/30 border border-purple-700/40 rounded-full px-4 py-1.5 mb-8">
@@ -138,7 +135,7 @@ export default function HomePage() {
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight tracking-tight mb-6">
             <span className="text-white">Sell Your Beats,</span>
             <br />
-            <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent">
+            <span className="text-red-600">
               Own Your Sound
             </span>
           </h1>
@@ -151,7 +148,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
               href="/dashboard"
-              className="bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold px-8 py-4 rounded-full text-lg shadow-xl shadow-purple-900/40"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-4 rounded-full text-lg shadow-md"
             >
               Start for Free
             </Link>
@@ -177,12 +174,12 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="py-24 bg-gray-950">
+      <section className="py-24 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">
               Everything You Need to{" "}
-              <span className="bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+              <span className="text-red-500">
                 Win
               </span>
             </h2>
@@ -254,14 +251,16 @@ export default function HomePage() {
           <div className="text-center mb-12">
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">
               Simple, Transparent{" "}
-              <span className="bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+              <span className="text-red-500">
                 Pricing
               </span>
             </h2>
             <p className="text-gray-400 text-lg mb-8">No hidden fees. Cancel anytime.</p>
+          </div>
 
-            {/* Tabs */}
-            </div>
+          {/* Tabs */}
+
+
 
           <div className="grid sm:grid-cols-3 gap-6">
             {pricingPlans.map((plan) => (
@@ -275,7 +274,7 @@ export default function HomePage() {
               >
                 {plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                    <span className="bg-red-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
                       Most Popular
                     </span>
                   </div>
@@ -305,7 +304,7 @@ export default function HomePage() {
                   href="/login"
                   className={`block text-center font-bold py-3 rounded-xl ${
                     plan.highlighted
-                      ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white shadow-lg shadow-purple-900/40"
+                      ? "bg-red-600 hover:bg-red-700 text-white shadow-md"
                       : "bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
                   }`}
                 >
@@ -369,7 +368,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/dashboard"
-            className="inline-block bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold px-10 py-4 rounded-full text-xl shadow-xl shadow-purple-900/40"
+            className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-10 py-4 rounded-full text-xl shadow-md"
           >
             Get Started — It&apos;s Free
           </Link>

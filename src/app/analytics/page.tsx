@@ -79,7 +79,9 @@ function buildHeatmap() {
       const base = (h >= 18 && h <= 23) ? (weekend ? 95 : 75)
                  : (h >= 12 && h <= 17) ? (weekend ? 65 : 45)
                  : (h <= 3)             ? 30 : 10;
-      return Math.min(100, base + Math.random() * 20 - 10);
+      // Deterministic variance between -10 and +10 to prevent hydration mismatch
+      const variance = ((day * 7 + h * 13) % 21) - 10;
+      return Math.min(100, Math.max(0, base + variance));
     })
   );
 }
@@ -446,7 +448,10 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
+        </div>
       </div>
     </div>
   );
 }
+
+

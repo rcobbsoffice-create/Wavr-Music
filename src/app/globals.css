@@ -1,21 +1,62 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
+  /* Muted Red and White Palette */
   --background: #030712;
-  --foreground: #f9fafb;
+  --foreground: #f1f5f9;
+  
+  /* Primary: Muted Red (#dc2626) */
+  --p-50: #fef2f2; --p-100: #fee2e2; --p-200: #fecaca; --p-300: #fca5a5;
+  --p-400: #f87171; --p-500: #dc2626; --p-600: #b91c1c; --p-700: #991b1b;
+  --p-800: #7f1d1d; --p-900: #450a0a; --p-950: #2d0606;
+
+  /* Secondary: Soft Gray/Slate */
+  --f-50: #f8fafc; --f-100: #f1f5f9; --f-200: #e2e8f0; --f-300: #cbd5e1;
+  --f-400: #94a3b8; --f-500: #64748b; --f-600: #475569; --f-700: #334155;
+  --f-800: #1e293b; --f-900: #0f172a; --f-950: #020617;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+[data-theme='neon-blue'] {
+  --background: #030812;
+  --p-50: #f0fdff; --p-100: #e0f8ff; --p-200: #b9f1ff; --p-300: #7df9ff;
+  --p-400: #0ecced; --p-500: #00d4f5; --p-600: #00a9cc; --p-700: #0086a3;
+  --p-800: #00708a; --p-900: #020764; --p-950: #030812;
+  --f-50: #f0f7ff; --f-100: #e0efff; --f-200: #b9dfff; --f-300: #7dbfff;
+  --f-400: #0ecced; --f-500: #00a3ff; --f-600: #0085ff; --f-700: #0066ff;
+  --f-800: #0047ff; --f-900: #020764; --f-950: #030812;
+}
+
+[data-theme='crimson-nights'] {
+  --background: #02182B;
+  --p-50: #fff1f2; --p-100: #ffe4e6; --p-200: #fecdd3; --p-300: #fda4af;
+  --p-400: #fb7185; --p-500: #f43f5e; --p-600: #e11d48; --p-700: #be123c;
+  --p-800: #9f1239; --p-900: #881337; --p-950: #4c0519;
+  /* Red/Navy vibe */
+  --f-50: #f0f9ff; --f-100: #e0f2fe; --f-200: #bae6fd; --f-300: #7dd3fc;
+  --f-400: #38bdf8; --f-500: #0ea5e9; --f-600: #0284c7; --f-700: #0369a1;
+  --f-800: #075985; --f-900: #0c4a6e; --f-950: #082f49;
+}
+
+[data-theme='cyber-yellow'] {
+  --background: #192230;
+  --p-50: #fffbeb; --p-100: #fef3c7; --p-200: #fde68a; --p-300: #fcd34d;
+  --p-400: #fbbf24; --p-500: #f59e0b; --p-600: #d97706; --p-700: #b45309;
+  --p-800: #92400e; --p-900: #78350f; --p-950: #451a03;
+  /* Yellow/Slate vibe */
+  --f-50: #f8fafc; --f-100: #f1f5f9; --f-200: #e2e8f0; --f-300: #cbd5e1;
+  --f-400: #94a3b8; --f-500: #64748b; --f-600: #475569; --f-700: #334155;
+  --f-800: #1e293b; --f-900: #0f172a; --f-950: #020617;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
+
 
 * {
   box-sizing: border-box;
@@ -26,43 +67,37 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: #030712;
 }
 ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #1e293b;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #7c3aed;
+  background: #dc2626;
 }
 
 /* Dashboard Transitions */
 .sidebar-transition {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease-out;
 }
 
 .fade-transition {
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity 0.2s ease-in-out;
 }
 
-/* Glass effect utilities */
+/* Flat Panel utilities */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #0f172a;
+  border: 1px solid #1e293b;
 }
 
 .glass-card {
-  background: rgba(31, 41, 55, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
+  background: #1e293b;
+  border: 1px solid #334155;
+  transition: all 0.2s ease;
 }
 
 .glass-card:hover {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: rgba(31, 41, 55, 0.7);
-  transform: translateY(-2px);
+  border-color: #dc2626;
 }

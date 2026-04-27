@@ -30,10 +30,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-// POST /api/merch — create a new merch product (admin only)
+// POST /api/merch — create a new merch product
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser("admin");
-  if (!user) {
+  const user = await getAuthUser();
+  if (!user || (user.role !== "admin" && user.role !== "producer")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -69,7 +69,16 @@ export async function POST(req: NextRequest) {
     }
 
     const product = await prisma.merchProduct.create({
-      data: { name, description, category, price, sizes, colors, images },
+      data: { 
+        name, 
+        description, 
+        category, 
+        price, 
+        sizes, 
+        colors, 
+        images,
+        producerId: user.id 
+      },
     });
 
     return NextResponse.json(product, { status: 201 });

@@ -135,7 +135,13 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate">{beat.title}</h3>
-            <p className="text-purple-400 text-xs mt-0.5 truncate">by {beat.producer}</p>
+            {beat.producerId ? (
+              <a href={`/p/${beat.producerId}`} className="text-purple-400 text-xs mt-0.5 truncate hover:text-purple-300 transition-colors block">
+                by {beat.producer}
+              </a>
+            ) : (
+              <p className="text-purple-400 text-xs mt-0.5 truncate">by {beat.producer}</p>
+            )}
           </div>
           <span className="text-white font-bold text-sm ml-2 shrink-0">
             from ${beat.priceBasic}

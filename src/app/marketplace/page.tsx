@@ -83,7 +83,7 @@ export default function MarketplacePage() {
               placeholder="Search beats, producers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 text-sm"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-red-600 text-sm"
             />
           </div>
         </div>
@@ -93,18 +93,18 @@ export default function MarketplacePage() {
       {featuredBeats.length > 0 && (
         <div className="bg-gray-900/50 border-b border-gray-800 py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-sm font-semibold text-purple-400 uppercase tracking-widest mb-4">
+            <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest mb-4">
               Featured Beats
             </h2>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
               {featuredBeats.map((beat) => (
                 <div
                   key={beat.id}
-                  className="shrink-0 w-64 bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-purple-600/50 cursor-pointer transition-all duration-200 group"
+                  className="shrink-0 w-64 bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-red-600/50 cursor-pointer transition-all duration-200 group"
                   onClick={() => setCurrentBeat(beat)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-700 to-fuchsia-800 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-red-600 flex items-center justify-center shrink-0">
                       {currentBeat?.id === beat.id && isPlaying ? (
                         <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
@@ -118,7 +118,7 @@ export default function MarketplacePage() {
                     <div className="min-w-0">
                       <p className="text-white font-semibold text-sm truncate">{beat.title}</p>
                       <p className="text-gray-400 text-xs">{beat.producer}</p>
-                      <p className="text-purple-400 text-xs font-bold">from ${beat.priceBasic}</p>
+                      <p className="text-red-600 text-xs font-bold">from ${beat.priceBasic}</p>
                     </div>
                   </div>
                 </div>
@@ -158,7 +158,7 @@ export default function MarketplacePage() {
                       onClick={() => setSelectedGenre(g)}
                       className={`w-full text-left text-sm px-3 py-1.5 rounded-lg transition-colors ${
                         selectedGenre === g
-                          ? "bg-purple-600/20 text-purple-300 border border-purple-600/40"
+                          ? "bg-red-600/20 text-red-500 border border-red-600/40 font-bold"
                           : "text-gray-400 hover:text-gray-300 hover:bg-gray-800"
                       }`}
                     >
@@ -172,7 +172,7 @@ export default function MarketplacePage() {
               <div>
                 <h3 className="text-white font-semibold text-sm mb-3">
                   BPM Range:{" "}
-                  <span className="text-purple-400">
+                  <span className="text-red-600 font-bold">
                     {bpmMin} – {bpmMax}
                   </span>
                 </h3>
@@ -184,7 +184,7 @@ export default function MarketplacePage() {
                     max={160}
                     value={bpmMin}
                     onChange={(e) => setBpmMin(Number(e.target.value))}
-                    className="w-full accent-purple-500"
+                    className="w-full accent-red-600"
                   />
                   <label className="text-xs text-gray-500">Max BPM</label>
                   <input
@@ -193,7 +193,7 @@ export default function MarketplacePage() {
                     max={160}
                     value={bpmMax}
                     onChange={(e) => setBpmMax(Number(e.target.value))}
-                    className="w-full accent-purple-500"
+                    className="w-full accent-red-600"
                   />
                 </div>
               </div>
@@ -202,7 +202,7 @@ export default function MarketplacePage() {
               <div>
                 <h3 className="text-white font-semibold text-sm mb-3">
                   Max Basic Price:{" "}
-                  <span className="text-purple-400">${priceMax}</span>
+                  <span className="text-red-600 font-bold">${priceMax}</span>
                 </h3>
                 <input
                   type="range"
@@ -223,9 +223,9 @@ export default function MarketplacePage() {
                     <button
                       key={m}
                       onClick={() => setSelectedMood(m)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
                         selectedMood === m
-                          ? "border-purple-500 bg-purple-900/30 text-purple-300"
+                          ? "border-red-600 bg-red-950/20 text-red-500 font-bold"
                           : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400"
                       }`}
                     >
@@ -277,7 +277,7 @@ export default function MarketplacePage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-purple-500"
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-600"
               >
                 <option value="featured">Featured</option>
                 <option value="popular">Most Popular</option>

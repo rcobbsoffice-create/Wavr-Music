@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { Beat } from "@/lib/mockData";
 
 const genreGradients: Record<string, string> = {
-  Trap: "from-red-900 via-gray-900 to-black",
-  "R&B": "from-blue-900 via-indigo-900 to-black",
-  Afrobeats: "from-orange-800 via-yellow-900 to-black",
+  Trap: "from-red-600 via-red-900/40 to-black",
+  "R&B": "from-gray-800 via-gray-900 to-black",
+  Afrobeats: "from-red-900 via-gray-900 to-black",
   Drill: "from-gray-800 via-slate-900 to-black",
-  Pop: "from-pink-900 via-fuchsia-900 to-black",
-  "Hip-Hop": "from-purple-900 via-violet-900 to-black",
+  Pop: "from-gray-900 via-gray-950 to-black",
+  "Hip-Hop": "from-red-800 via-red-950 to-black",
 };
 
 interface BeatCardProps {
@@ -53,7 +53,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-purple-700/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-900/20 group">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-red-600/50 transition-all duration-300 hover:shadow-lg hover:shadow-red-900/20 group">
       {/* Artwork */}
       <div
         className={`relative h-44 bg-gradient-to-br ${gradient} cursor-pointer`}
@@ -81,8 +81,8 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
           <div
             className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
               isPlaying
-                ? "bg-purple-500 shadow-lg shadow-purple-500/50 scale-110"
-                : "bg-black/50 backdrop-blur-sm group-hover:bg-purple-600/80 group-hover:scale-110"
+                ? "bg-red-600 shadow-lg shadow-red-600/50 scale-110"
+                : "bg-black/50 backdrop-blur-sm group-hover:bg-red-600/80 group-hover:scale-110"
             }`}
           >
             {isPlaying ? (
@@ -111,7 +111,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
         {/* Featured badge */}
         {beat.featured && (
           <div className="absolute top-3 right-3">
-            <span className="bg-purple-600/80 backdrop-blur-sm text-xs text-white px-2.5 py-1 rounded-full font-semibold">
+            <span className="bg-red-600 text-xs text-white px-2.5 py-1 rounded-full font-bold shadow-md">
               Featured
             </span>
           </div>
@@ -136,11 +136,11 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate">{beat.title}</h3>
             {beat.producerId ? (
-              <a href={`/p/${beat.producerId}`} className="text-purple-400 text-xs mt-0.5 truncate hover:text-purple-300 transition-colors block">
+              <a href={`/p/${beat.producerId}`} className="text-red-500 text-xs mt-0.5 truncate hover:text-red-400 transition-colors block">
                 by {beat.producer}
               </a>
             ) : (
-              <p className="text-purple-400 text-xs mt-0.5 truncate">by {beat.producer}</p>
+              <p className="text-red-500 text-xs mt-0.5 truncate">by {beat.producer}</p>
             )}
           </div>
           <span className="text-white font-bold text-sm ml-2 shrink-0">
@@ -177,7 +177,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowLicenses(true)}
-              className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors duration-200"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors duration-200 shadow-sm"
             >
               License
             </button>
@@ -199,7 +199,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
                 <p className="text-white text-xs font-semibold">Basic</p>
                 <p className="text-gray-500 text-xs">MP3 only</p>
               </div>
-              <span className="text-purple-400 text-sm font-bold group-hover/lic:text-purple-300">
+              <span className="text-red-500 text-sm font-bold group-hover/lic:text-red-400">
                 ${beat.priceBasic}
               </span>
             </button>
@@ -212,14 +212,14 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
                 <p className="text-white text-xs font-semibold">Premium</p>
                 <p className="text-gray-500 text-xs">MP3 + WAV + Stems</p>
               </div>
-              <span className="text-purple-400 text-sm font-bold group-hover/lic:text-purple-300">
+              <span className="text-red-500 text-sm font-bold group-hover/lic:text-red-400">
                 ${beat.pricePremium}
               </span>
             </button>
             <button
               onClick={() => handleLicense("exclusive")}
               disabled={purchasing || beat.status === "exclusive_sold"}
-              className="w-full flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-fuchsia-900/40 rounded-lg px-3 py-2 hover:from-purple-900/60 disabled:opacity-60 disabled:cursor-not-allowed group/lic border border-purple-600/40 transition-colors"
+              className="w-full flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed group/lic border border-red-600/30 transition-colors"
             >
               <div className="text-left">
                 <p className="text-white text-xs font-semibold">
@@ -230,7 +230,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
                 </p>
                 <p className="text-gray-500 text-xs">Full ownership</p>
               </div>
-              <span className="text-fuchsia-400 text-sm font-bold group-hover/lic:text-fuchsia-300">
+              <span className="text-red-500 text-sm font-bold group-hover/lic:text-red-400">
                 ${beat.priceExclusive}
               </span>
             </button>

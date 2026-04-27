@@ -117,6 +117,24 @@ const stats = [
   { value: "500K+", label: "Licenses Purchased" },
 ];
 
+const featuredProducers = [
+  { name: "Alex Rivera", role: "Elite Producer", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=400&auto=format&fit=crop", sales: "1.2k+" },
+  { name: "Marcus J.", role: "Trap God", image: "https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?q=80&w=400&auto=format&fit=crop", sales: "850+" },
+  { name: "Keisha B.", role: "R&B Specialist", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop", sales: "2.1k+" },
+  { name: "D-Smooth", role: "Lo-Fi Master", image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop", sales: "500+" },
+];
+
+const featuredNews = [
+  { id: 1, title: "WAVR 2.0: AI Stem Separation is Here", date: "April 24, 2024", excerpt: "Process your beats into high-quality stems instantly with our new AI engine." },
+  { id: 2, title: "How to Scale Your Beat Sales in 2024", date: "April 20, 2024", excerpt: "5 key strategies from top-earning producers on the WAVR marketplace." },
+];
+
+const featuredMerch = [
+  { name: "Classic WAVR Tee", price: "$29.99", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=400&auto=format&fit=crop" },
+  { name: "Producer Hoodie", price: "$54.99", image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=400&auto=format&fit=crop" },
+  { name: "Vinyl Record Case", price: "$89.99", image: "https://images.unsplash.com/photo-1603048588665-791ca8aea617?q=80&w=400&auto=format&fit=crop" },
+];
+
 export default function HomePage() {
   return (
     <div className="overflow-x-hidden">
@@ -125,10 +143,10 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-background" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20">
-          <div className="inline-flex items-center gap-2 bg-purple-900/30 border border-purple-700/40 rounded-full px-4 py-1.5 mb-8">
-            <div className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
-            <span className="text-purple-300 text-sm font-medium">
-              The #1 Beat Marketplace for Independent Producers
+          <div className="inline-flex items-center gap-2 bg-red-950/20 border border-red-900/30 rounded-full px-4 py-1.5 mb-8">
+            <div className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+            <span className="text-red-500 text-sm font-bold uppercase tracking-wider">
+              The #1 Marketplace for Independent Producers
             </span>
           </div>
 
@@ -173,8 +191,80 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Featured Producers */}
+      <section className="py-24 bg-gray-950 border-y border-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-end mb-12 gap-6">
+            <div className="text-left">
+              <h2 className="text-4xl font-black text-white mb-4">Featured <span className="text-red-600">Producers</span></h2>
+              <p className="text-gray-400">The most influential sounds on WAVR right now.</p>
+            </div>
+            <Link href="/marketplace" className="text-red-600 font-bold hover:underline flex items-center gap-2">
+              View All Producers <span>→</span>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {featuredProducers.map((p) => (
+              <div key={p.name} className="group relative rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 transition-all hover:border-red-600/40">
+                <div className="aspect-square overflow-hidden">
+                  <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                </div>
+                <div className="p-4">
+                  <h3 className="text-white font-bold">{p.name}</h3>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-gray-500">{p.role}</span>
+                    <span className="text-xs text-red-600 font-bold">{p.sales} Sales</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Merch & News Slot */}
       <section className="py-24 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-3 gap-12">
+            {/* News Slot */}
+            <div className="lg:col-span-1">
+              <h2 className="text-3xl font-black text-white mb-8">Latest <span className="text-red-600">News</span></h2>
+              <div className="space-y-6">
+                {featuredNews.map((n) => (
+                  <Link key={n.id} href={`/news/${n.id}`} className="block group">
+                    <span className="text-xs text-red-600 font-bold uppercase tracking-widest block mb-2">{n.date}</span>
+                    <h3 className="text-white font-bold text-lg group-hover:text-red-500 transition-colors mb-2">{n.title}</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{n.excerpt}</p>
+                    <div className="mt-4 w-8 h-0.5 bg-gray-800 group-hover:w-16 group-hover:bg-red-600 transition-all" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Merch Slot */}
+            <div className="lg:col-span-2">
+              <div className="flex justify-between items-end mb-8">
+                <h2 className="text-3xl font-black text-white">Top <span className="text-red-600">Merch</span></h2>
+                <Link href="/merch" className="text-gray-500 text-sm font-bold hover:text-white transition-colors">View Store</Link>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-6">
+                {featuredMerch.map((m) => (
+                  <div key={m.name} className="group">
+                    <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 mb-4 group-hover:border-red-600/40 transition-all">
+                      <img src={m.image} alt={m.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm mb-1">{m.name}</h3>
+                    <p className="text-red-600 font-bold text-sm">{m.price}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-24 bg-gray-950 border-t border-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">
@@ -268,7 +358,7 @@ export default function HomePage() {
                 key={plan.name}
                 className={`relative rounded-2xl p-8 border ${
                   plan.highlighted
-                    ? "bg-gradient-to-b from-purple-900/60 to-gray-900 border-purple-600/60 shadow-xl shadow-purple-900/30 scale-105"
+                    ? "bg-gray-900 border-red-600/40 shadow-xl scale-105"
                     : "bg-gray-900 border-gray-800"
                 }`}
               >
@@ -330,7 +420,7 @@ export default function HomePage() {
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:border-purple-700/40 transition-all duration-300"
+                className="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:border-red-600/40 transition-all duration-300"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white font-bold text-sm`}>
@@ -358,7 +448,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Banner */}
-      <section className="py-20 bg-gradient-to-r from-purple-900/40 via-gray-900 to-fuchsia-900/40 border-y border-purple-900/40">
+      <section className="py-24 bg-gray-900 border-y border-gray-800">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">
             Ready to Build Your Empire?

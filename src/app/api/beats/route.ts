@@ -15,13 +15,16 @@ export async function GET() {
     const result = beats.map((b) => ({
       id: b.id,
       title: b.title,
-      producer: b.producer.name,
+      producer: b.producer?.name ?? "Unknown Producer",
       producerId: b.producerId,
       genre: b.genre,
       bpm: b.bpm,
       key: b.key,
       mood: b.mood ?? "",
-      tags: (() => { try { return JSON.parse(b.tags); } catch { return []; } })(),
+      tags: (() => { 
+        if (typeof b.tags !== "string") return Array.isArray(b.tags) ? b.tags : [];
+        try { return JSON.parse(b.tags); } catch { return []; } 
+      })(),
       priceBasic: b.priceBasic,
       pricePremium: b.pricePremium,
       priceExclusive: b.priceExclusive,

@@ -25,13 +25,17 @@ export default function MarketplacePage() {
     fetch("/api/beats")
       .then((r) => r.json())
       .then((data) => {
-        setBeats(data);
+        setBeats(Array.isArray(data) ? data : []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("Failed to load beats:", err);
+        setBeats([]);
+        setLoading(false);
+      });
   }, []);
 
-  const featuredBeats = beats.filter((b) => b.featured);
+  const featuredBeats = Array.isArray(beats) ? beats.filter((b) => b.featured) : [];
 
   const filteredBeats = useMemo(() => {
     let result = beats.filter((b) => {
@@ -204,15 +208,15 @@ export default function MarketplacePage() {
                   Max Basic Price:{" "}
                   <span className="text-red-600 font-bold">${priceMax}</span>
                 </h3>
-                <input
-                  type="range"
-                  min={10}
-                  max={300}
-                  step={10}
-                  value={priceMax}
-                  onChange={(e) => setPriceMax(Number(e.target.value))}
-                  className="w-full accent-purple-500"
-                />
+                  <input
+                    type="range"
+                    min={10}
+                    max={300}
+                    step={10}
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(Number(e.target.value))}
+                    className="w-full accent-red-600"
+                  />
               </div>
 
               {/* Mood */}

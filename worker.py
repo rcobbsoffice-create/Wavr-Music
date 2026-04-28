@@ -9,6 +9,8 @@ import sys
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
+# Allow large file uploads (up to 100MB)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024 
 
 # Configurable paths for cloud environments
 # Default to local public/uploads if env var not set

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/apiAuth";
 
-const STEMS_URL = process.env.STEMS_WORKER_URL ?? "http://localhost:5050";
+const STEMS_URL = process.env.STEMS_WORKER_URL ?? "http://localhost:7860";
+
+// Increase timeout for large audio analysis
+export const maxDuration = 60; 
 
 /**
  * POST /api/beats/analyze
@@ -42,6 +45,9 @@ export async function POST(req: NextRequest) {
 
     const res = await fetch(`${STEMS_URL}/analyze`, {
       method: "POST",
+      headers: {
+        ...(process.env.HF_TOKEN ? { "Authorization": `Bearer ${process.env.HF_TOKEN}` } : {})
+      },
       body: fd,
     });
 

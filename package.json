@@ -20,7 +20,8 @@
     "postcss": "^8.4.49",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "stripe": "^20.4.1"
+    "stripe": "^20.4.1",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

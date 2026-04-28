@@ -1,13 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder'
+// HARDCODED FOR TESTING - Next.js is failing to load your .env vars in the browser
+const supabaseUrl = "https://ozvcectjbdadvznxspsm.supabase.co"
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dmNlY3RqYmRhZHZ6bnhzcHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NzYxNTMsImV4cCI6MjA5MjE1MjE1M30.pdRFtEdDJS43CL63XDIAF9MgCCL4l1U9xmx94CUJXIo"
 
-console.log("[Supabase] Initializing with URL:", supabaseUrl);
-if (supabaseAnonKey === 'placeholder') {
-  console.warn("[Supabase] WARNING: Using placeholder key. Environment variables might not be loaded correctly.");
-} else {
-  console.log("[Supabase] Key detected starting with:", supabaseAnonKey.substring(0, 10));
-}
+console.log("[Supabase] Initializing with HARDCODED Key...");
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)

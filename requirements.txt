@@ -1,0 +1,6 @@
+flask
+demucs
+librosa
+numpy
+werkzeug
+gunicorn

@@ -174,6 +174,7 @@ function PayoutsTab({ producerStats }: { producerStats: ProducerStats | null }) 
 }
 
 function MerchTab() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -295,7 +296,7 @@ function MerchTab() {
           {user?.balance !== undefined && (
             <div className="bg-green-900/20 border border-green-800/30 px-3 py-1 rounded-full flex items-center gap-2">
               <span className="text-green-500 text-[10px] font-bold uppercase tracking-widest">Balance</span>
-              <span className="text-white font-black text-sm">${user.balance.toFixed(2)}</span>
+              <span className="text-white font-black text-sm">${user?.balance?.toFixed(2) ?? "0.00"}</span>
             </div>
           )}
         </div>

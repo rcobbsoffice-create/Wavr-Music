@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/apiAuth";
 import { saveUploadedFile } from "@/lib/uploadFile";
+export const dynamic = "force-dynamic";
 
 // GET /api/beats — public list of all active beats
 export async function GET() {

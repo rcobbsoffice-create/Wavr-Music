@@ -12,14 +12,11 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the current directory contents into the container at /app
-COPY requirements.txt .
+# Copy the application
+COPY . .
 
-# Install any needed packages specified in requirements.txt
+# Install dependencies again in case they were overwritten
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application
-COPY stems_server.py .
 
 # Set environment variables
 # Hugging Face Spaces expects port 7860

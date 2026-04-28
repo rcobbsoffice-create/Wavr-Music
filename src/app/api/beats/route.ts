@@ -85,12 +85,15 @@ export async function POST(req: NextRequest) {
       // keep default
     }
 
-    // Save audio file if provided
-    let audioFilePath: string | undefined;
+    // Save audio file if provided (either raw file or URL)
+    let audioFilePath: string | undefined = (form.get("audioUrl") as string | null) ?? undefined;
     if (audioFileEntry && audioFileEntry.size > 0) {
       const buffer = Buffer.from(await audioFileEntry.arrayBuffer());
       audioFilePath = await saveUploadedFile(buffer, audioFileEntry.name, "audio");
     }
+
+    // Save artwork if provided as URL
+    const artworkUrl = (form.get("artworkUrl") as string | null) ?? undefined;
 
     const beat = await prisma.beat.create({
       data: {
@@ -105,6 +108,7 @@ export async function POST(req: NextRequest) {
         priceExclusive,
         producerId: user.id,
         audioFile: audioFilePath,
+        artwork: artworkUrl,
         status: "active",
       },
     });

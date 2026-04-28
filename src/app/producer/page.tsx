@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { usePlayer } from "@/components/PlayerContext";
+import { supabase } from "@/lib/supabaseClient";
 
 const genreGradients: Record<string, string> = {
   Trap:      "from-red-900 via-gray-900 to-black",
@@ -657,6 +658,31 @@ export default function ProducerDashboard() {
     }
     setUploading(true);
     try {
+      let finalAudioUrl = "";
+
+      if (uploadFile) {
+        // 1. Upload audio to Supabase Storage
+        const fileExt = uploadFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `beats/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('beats')
+          .upload(filePath, uploadFile);
+
+        if (uploadError) {
+          setUploadError("Audio upload failed: " + uploadError.message);
+          return;
+        }
+
+        // 2. Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('beats')
+          .getPublicUrl(filePath);
+        
+        finalAudioUrl = publicUrl;
+      }
+
       const fd = new FormData();
       fd.append("title", uploadTitle);
       fd.append("genre", uploadGenre);
@@ -667,9 +693,13 @@ export default function ProducerDashboard() {
       fd.append("priceBasic", uploadPriceBasic);
       fd.append("pricePremium", uploadPricePremium);
       fd.append("priceExclusive", uploadPriceExclusive);
-      if (uploadFile) fd.append("audio", uploadFile);
+      
+      // Send the Supabase URL instead of the raw file
+      if (finalAudioUrl) fd.append("audioUrl", finalAudioUrl);
+
       const validCollabs = collabs.filter((c) => c.email.trim() && parseFloat(c.split) > 0);
       if (validCollabs.length > 0) fd.append("collaborators", JSON.stringify(validCollabs));
+      
       const res = await fetch("/api/beats", { method: "POST", body: fd });
       if (!res.ok) {
         const data = await res.json();
@@ -717,40 +747,48 @@ export default function ProducerDashboard() {
     setEditSaving(true);
     setEditError("");
     try {
-      let res: Response;
+      let finalArtworkUrl = editArtworkPreview;
+
       if (editArtworkFile) {
-        // Use FormData so we can send the image file
-        const fd = new FormData();
-        fd.append("title", editTitle.trim());
-        fd.append("genre", editGenre);
-        fd.append("bpm", editBpm);
-        fd.append("key", editKey.trim());
-        fd.append("mood", editMood);
-        if (editTags) fd.append("tags", JSON.stringify(editTags.split(",").map(t => t.trim()).filter(Boolean)));
-        fd.append("priceBasic", editPriceBasic);
-        fd.append("pricePremium", editPricePremium);
-        fd.append("priceExclusive", editPriceExclusive);
-        fd.append("status", editStatus);
-        fd.append("artwork", editArtworkFile);
-        res = await fetch(`/api/beats/${editBeat.id}`, { method: "PATCH", body: fd });
-      } else {
-        res = await fetch(`/api/beats/${editBeat.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: editTitle.trim(),
-            genre: editGenre,
-            bpm: parseInt(editBpm, 10),
-            key: editKey.trim(),
-            mood: editMood,
-            tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
-            priceBasic: parseFloat(editPriceBasic),
-            pricePremium: parseFloat(editPricePremium),
-            priceExclusive: parseFloat(editPriceExclusive),
-            status: editStatus,
-          }),
-        });
+        // 1. Upload artwork to Supabase
+        const fileExt = editArtworkFile.name.split('.').pop();
+        const fileName = `artwork-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `artworks/${fileName}`;
+
+        const { data, error: uploadError } = await supabase.storage
+          .from('beats')
+          .upload(filePath, editArtworkFile);
+
+        if (uploadError) {
+          setEditError("Artwork upload failed: " + uploadError.message);
+          setEditSaving(false);
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('beats')
+          .getPublicUrl(filePath);
+        
+        finalArtworkUrl = publicUrl;
       }
+
+      const res = await fetch(`/api/beats/${editBeat.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          genre: editGenre,
+          bpm: parseInt(editBpm, 10),
+          key: editKey.trim(),
+          mood: editMood,
+          tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+          priceBasic: parseFloat(editPriceBasic),
+          pricePremium: parseFloat(editPricePremium),
+          priceExclusive: parseFloat(editPriceExclusive),
+          status: editStatus,
+          artworkUrl: finalArtworkUrl
+        }),
+      });
       if (!res.ok) {
         const data = await res.json();
         setEditError(data.error ?? "Update failed");
@@ -1668,12 +1706,32 @@ export default function ProducerDashboard() {
                       setDetectingBpm(true);
                       setDetectError("");
                       try {
-                        const fd = new FormData();
-                        fd.append("audio", uploadFile);
-                        if (uploadGenre) fd.append("genre", uploadGenre);
-                        if (uploadMood) fd.append("mood", uploadMood);
+                        // 1. Upload file to Supabase Storage to bypass Vercel limits
+                        const fileExt = uploadFile.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        const filePath = `temp-analyze/${fileName}`;
+
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                          .from('beats')
+                          .upload(filePath, uploadFile);
+
+                        if (uploadError) {
+                          setDetectError("Upload failed: " + uploadError.message);
+                          return;
+                        }
+
+                        // 2. Get the public URL
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('beats')
+                          .getPublicUrl(filePath);
+
+                        // 3. Send URL to our analyze API
+                        const res = await fetch("/api/beats/analyze", { 
+                          method: "POST", 
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ audioUrl: publicUrl }) 
+                        });
                         
-                        const res = await fetch("/api/beats/analyze", { method: "POST", body: fd });
                         const data = await res.json();
                         if (!res.ok) { setDetectError(data.error ?? "Detection failed"); return; }
                         
@@ -1683,8 +1741,12 @@ export default function ProducerDashboard() {
                           setUploadTitle(data.suggestedTitle);
                         }
 
-                      } catch {
-                        setDetectError("Could not reach analysis server. Is stems_server.py running?");
+                        // Optional: Clean up the temp file from Supabase
+                        // await supabase.storage.from('beats').remove([filePath]);
+
+                      } catch (err) {
+                        console.error(err);
+                        setDetectError("Analysis failed. Please check your connection.");
                       } finally {
                         setDetectingBpm(false);
                       }

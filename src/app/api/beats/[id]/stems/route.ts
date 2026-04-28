@@ -81,7 +81,7 @@ export async function POST(
         body: JSON.stringify({ 
           beatId: id, 
           audioUrl: audioUrl,
-          // Optional: callbackUrl: `${appUrl}/api/beats/${id}/stems/callback`
+          callbackUrl: `${appUrl}/api/beats/${id}/stems/callback`
         }),
       });
 
@@ -90,22 +90,10 @@ export async function POST(
         throw new Error(`Worker failed: ${errorDetail}`);
       }
 
-      const result = await resp.json() as { stems: { type: string; filePath: string }[] };
+      // We don't wait for the JSON results here because the worker 
+      // will send them to the callback URL instead.
+      return NextResponse.json({ ok: true, message: "Processing started" });
 
-      await Promise.all(
-        result.stems.map((s: { type: string; filePath: string }) =>
-          prisma.beatStem.update({
-            where: { beatId_type: { beatId: id, type: s.type } },
-            data: { 
-              // If worker returned a full URL or a relative path, we store it.
-              // Note: If worker is on HF, these paths might not be accessible 
-              // unless we also download them. For now, we assume local or shared storage.
-              filePath: s.filePath, 
-              status: "ready" 
-            },
-          })
-        )
-      );
     } catch (err) {
       console.error("[Stems] Worker error:", err);
       await prisma.beatStem.updateMany({

@@ -48,6 +48,9 @@ export async function PATCH(
         const buffer = Buffer.from(await artworkFile.arrayBuffer());
         data.artwork = await saveUploadedFile(buffer, artworkFile.name, "artwork");
       }
+      const artworkUrl = form.get("artworkUrl");
+      if (artworkUrl) data.artwork = String(artworkUrl);
+
     } else {
       // JSON path
       const body = await req.json();
@@ -55,6 +58,8 @@ export async function PATCH(
       for (const field of allowed) {
         if (body[field] !== undefined) data[field] = body[field];
       }
+      if (body.artworkUrl) data.artwork = body.artworkUrl;
+      
       if (data.bpm) data.bpm = parseInt(String(data.bpm), 10);
       if (data.priceBasic) data.priceBasic = parseFloat(String(data.priceBasic));
       if (data.pricePremium) data.pricePremium = parseFloat(String(data.pricePremium));

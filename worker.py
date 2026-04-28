@@ -52,7 +52,7 @@ def analyze():
     except ImportError:
         return jsonify({"error": "librosa not installed"}), 500
 
-    audio_url = request.form.get("audioUrl")
+    audio_url = request.args.get("url") or request.form.get("audioUrl")
     if not audio_url and "audio" not in request.files:
         return jsonify({"error": "No audio provided"}), 400
 

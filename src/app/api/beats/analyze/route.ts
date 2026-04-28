@@ -17,38 +17,43 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const contentType = req.headers.get("content-type") ?? "";
-  if (!contentType.includes("multipart/form-data")) {
-    return NextResponse.json({ error: "Expected multipart/form-data with 'audio' field" }, { status: 400 });
+  let audioUrl = "";
+  let fileName = "audio.mp3";
+
+  if (contentType.includes("application/json")) {
+    const body = await req.json();
+    audioUrl = body.audioUrl;
+  } else if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    const audioFile = formData.get("audio") as File | null;
+    if (audioFile) {
+      // Forward the file (limited by Vercel to 4.5MB)
+      const fd = new FormData();
+      fd.append("audio", audioFile, audioFile.name);
+      
+      const res = await fetch(`${STEMS_URL}/analyze`, {
+        method: "POST",
+        headers: {
+          ...(process.env.HF_TOKEN ? { "Authorization": `Bearer ${process.env.HF_TOKEN}` } : {})
+        },
+        body: fd,
+      });
+      return NextResponse.json(await res.json());
+    }
+    audioUrl = formData.get("audioUrl") as string;
   }
 
-  const formData = await req.formData();
-  const audioFile = formData.get("audio") as File | null;
-  if (!audioFile) {
-    return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
-  }
-
-  // Check file size (max 500 MB)
-  if (audioFile.size > 500 * 1024 * 1024) {
-    return NextResponse.json({ error: "File too large (max 500 MB)" }, { status: 400 });
+  if (!audioUrl) {
+    return NextResponse.json({ error: "No audio provided" }, { status: 400 });
   }
 
   try {
-    // Forward the file and metadata to the Python stems server
-    const fd = new FormData();
-    fd.append("audio", audioFile, audioFile.name);
-    
-    // Extract genre/mood from original request if provided
-    const genre = formData.get("genre") as string | null;
-    const mood = formData.get("mood") as string | null;
-    if (genre) fd.append("genre", genre);
-    if (mood) fd.append("mood", mood);
-
-    const res = await fetch(`${STEMS_URL}/analyze`, {
+    // Forward the URL to the Python stems server
+    const res = await fetch(`${STEMS_URL}/analyze?url=${encodeURIComponent(audioUrl)}`, {
       method: "POST",
       headers: {
         ...(process.env.HF_TOKEN ? { "Authorization": `Bearer ${process.env.HF_TOKEN}` } : {})
       },
-      body: fd,
     });
 
     const data = await res.json();

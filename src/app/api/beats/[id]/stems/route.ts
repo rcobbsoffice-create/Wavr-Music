@@ -74,7 +74,10 @@ export async function POST(
 
       const resp = await fetch(`${workerUrl}/process`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(process.env.HF_TOKEN ? { "Authorization": `Bearer ${process.env.HF_TOKEN}` } : {})
+        },
         body: JSON.stringify({ 
           beatId: id, 
           audioUrl: audioUrl,

@@ -671,7 +671,8 @@ export default function ProducerDashboard() {
           .upload(filePath, uploadFile);
 
         if (uploadError) {
-          setUploadError("Audio upload failed: " + uploadError.message);
+          console.error("Supabase Publish Audio Error:", uploadError);
+          setUploadError(`Audio upload failed: ${uploadError.message} (Check console)`);
           return;
         }
 
@@ -760,7 +761,8 @@ export default function ProducerDashboard() {
           .upload(filePath, editArtworkFile);
 
         if (uploadError) {
-          setEditError("Artwork upload failed: " + uploadError.message);
+          console.error("Supabase Edit Artwork Error:", uploadError);
+          setEditError(`Artwork upload failed: ${uploadError.message} (Check console)`);
           setEditSaving(false);
           return;
         }
@@ -1716,7 +1718,8 @@ export default function ProducerDashboard() {
                           .upload(filePath, uploadFile);
 
                         if (uploadError) {
-                          setDetectError("Upload failed: " + uploadError.message);
+                          console.error("Supabase Upload Error Details:", uploadError);
+                          setDetectError(`Upload failed: ${uploadError.message} (Check console for details)`);
                           return;
                         }
 

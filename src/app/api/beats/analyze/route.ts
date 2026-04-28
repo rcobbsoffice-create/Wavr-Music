@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
 
   const contentType = req.headers.get("content-type") ?? "";
   let audioUrl = "";
+  let file: File | null = null;
   let fileName = "audio.mp3";
 
   if (contentType.includes("application/json")) {
@@ -57,11 +58,35 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      return NextResponse.json({ error: data.error ?? "Analysis failed" }, { status: 500 });
+    if (!res.ok) throw new Error(data.error || "Analysis failed");
+
+    // Better title suggestion: extract from URL if file is missing
+    let suggestedTitle = "";
+    if (file) {
+      suggestedTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim();
+    } else if (audioUrl) {
+      // Extract from Supabase URL (e.g. .../beats/temp-analyze/123-my-beat.mp3)
+      const urlParts = audioUrl.split('/');
+      const lastPart = urlParts[urlParts.length - 1];
+      // Remove timestamp prefix (123456789-) if present
+      suggestedTitle = lastPart
+        .replace(/^\d+-/, "") 
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[_-]/g, " ")
+        .trim();
     }
 
-    return NextResponse.json(data); // { bpm, key, suggestedTitle }
+    // Generate a suggested artwork prompt
+    const mood = data.mood || "Energetic";
+    const genre = data.genre || "Hip Hop";
+    const suggestedArtworkPrompt = `Album cover for a ${mood} ${genre} beat, professional digital art, high quality, artistic, abstract music visualization`;
+
+    return NextResponse.json({
+      bpm: data.bpm,
+      key: data.key,
+      suggestedTitle,
+      suggestedArtworkPrompt
+    });
 
   } catch (err) {
     console.error("[POST /api/beats/analyze]", err);

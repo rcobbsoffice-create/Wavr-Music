@@ -603,6 +603,11 @@ export default function ProducerDashboard() {
   const [uploadPriceBasic, setUploadPriceBasic] = useState("29.99");
   const [uploadPricePremium, setUploadPricePremium] = useState("99.99");
   const [uploadPriceExclusive, setUploadPriceExclusive] = useState("299.99");
+  
+  // AI Artwork Generation
+  const [artworkPrompt, setArtworkPrompt] = useState("");
+  const [generatingArtwork, setGeneratingArtwork] = useState(false);
+  const [artworkError, setArtworkError] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -649,6 +654,29 @@ export default function ProducerDashboard() {
     }
   }
 
+  async function handleGenerateArtwork() {
+    if (!artworkPrompt) return;
+    setGeneratingArtwork(true);
+    setArtworkError("");
+    try {
+      const res = await fetch("/api/beats/generate-artwork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: artworkPrompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Generation failed");
+      
+      // Update preview and store the URL
+      setEditArtworkPreview(data.imageUrl);
+      // If we're in the upload modal, we'll use this preview URL
+    } catch (err: any) {
+      setArtworkError(err.message);
+    } finally {
+      setGeneratingArtwork(false);
+    }
+  }
+
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     setUploadError("");
@@ -684,6 +712,21 @@ export default function ProducerDashboard() {
         finalAudioUrl = publicUrl;
       }
 
+      let finalArtworkUrl = "";
+      if (editArtworkFile) {
+        const fileExt = editArtworkFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `artwork/${fileName}`;
+        const { error: uploadError } = await supabase.storage.from('beats').upload(filePath, editArtworkFile);
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from('beats').getPublicUrl(filePath);
+          finalArtworkUrl = publicUrl;
+        }
+      } else if (editArtworkPreview && editArtworkPreview.startsWith('http')) {
+        // Use the AI generated URL directly
+        finalArtworkUrl = editArtworkPreview;
+      }
+
       const fd = new FormData();
       fd.append("title", uploadTitle);
       fd.append("genre", uploadGenre);
@@ -697,6 +740,7 @@ export default function ProducerDashboard() {
       
       // Send the Supabase URL instead of the raw file
       if (finalAudioUrl) fd.append("audioUrl", finalAudioUrl);
+      if (finalArtworkUrl) fd.append("artworkUrl", finalArtworkUrl);
 
       const validCollabs = collabs.filter((c) => c.email.trim() && parseFloat(c.split) > 0);
       if (validCollabs.length > 0) fd.append("collaborators", JSON.stringify(validCollabs));
@@ -1602,6 +1646,34 @@ export default function ProducerDashboard() {
                     }}
                   />
                 </div>
+                
+                <div className="mt-3 space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      value={artworkPrompt} 
+                      onChange={e => setArtworkPrompt(e.target.value)} 
+                      placeholder="Enter a prompt for AI artwork..."
+                      className="flex-1 bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateArtwork}
+                      disabled={generatingArtwork || !artworkPrompt}
+                      className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-400 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {generatingArtwork ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>✨ Generate</>
+                      )}
+                    </button>
+                  </div>
+                  {artworkError && <p className="text-red-500 text-[10px]">{artworkError}</p>}
+                </div>
+
                 {editArtworkFile && (
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-gray-400 text-xs truncate max-w-[200px]">{editArtworkFile.name}</span>
@@ -1750,6 +1822,9 @@ export default function ProducerDashboard() {
                         if (data.suggestedTitle && !uploadTitle.trim()) {
                           setUploadTitle(data.suggestedTitle);
                         }
+                        if (data.suggestedArtworkPrompt) {
+                          setArtworkPrompt(data.suggestedArtworkPrompt);
+                        }
 
                         // Optional: Clean up the temp file from Supabase
                         // await supabase.storage.from('beats').remove([filePath]);
@@ -1786,6 +1861,69 @@ export default function ProducerDashboard() {
                 <div className="col-span-2">
                   <label className="text-gray-400 text-xs font-medium block mb-1">Tags <span className="text-gray-600">(comma separated)</span></label>
                   <input value={uploadTags} onChange={e => setUploadTags(e.target.value)} placeholder="dark, heavy, melodic" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
+                </div>
+              </div>
+
+              {/* Artwork Upload */}
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-2">Artwork</label>
+                <div
+                  className="relative w-full h-36 rounded-xl border-2 border-dashed border-gray-700 hover:border-purple-600 transition-colors cursor-pointer overflow-hidden bg-gray-800/50 group"
+                  onClick={() => editArtworkRef.current?.click()}
+                >
+                  {editArtworkPreview ? (
+                    <>
+                      <img src={editArtworkPreview} alt="artwork" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-6 h-6 text-white mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span className="text-white text-xs font-medium">Change artwork</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <span className="text-gray-500 text-xs">Click to upload artwork</span>
+                      <span className="text-gray-600 text-xs">PNG, JPG, WEBP — max 5MB</span>
+                    </div>
+                  )}
+                  <input
+                    type="file" className="hidden" ref={editArtworkRef} accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setEditArtworkFile(file);
+                        setEditArtworkPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                </div>
+                
+                {/* AI Generation Controls */}
+                <div className="mt-3 space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      value={artworkPrompt} 
+                      onChange={e => setArtworkPrompt(e.target.value)} 
+                      placeholder="Enter a prompt for AI artwork..."
+                      className="flex-1 bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateArtwork}
+                      disabled={generatingArtwork || !artworkPrompt}
+                      className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-400 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {generatingArtwork ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>✨ Generate</>
+                      )}
+                    </button>
+                  </div>
+                  {artworkError && <p className="text-red-500 text-[10px]">{artworkError}</p>}
                 </div>
               </div>
 

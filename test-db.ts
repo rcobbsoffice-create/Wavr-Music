@@ -1,17 +1,19 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
 async function main() {
   try {
-    const beats = await prisma.beat.findMany({
-      where: { status: { not: "draft" } },
-      include: { producer: { select: { name: true } } },
-    });
-    console.log("Found beats:", beats.length);
-    console.log("First beat:", JSON.stringify(beats[0], null, 2));
+    console.log("Testing database connection...")
+    const count = await prisma.user.count()
+    console.log(`Connection successful! Found ${count} users.`)
   } catch (err) {
-    console.error("Prisma error:", err);
+    console.error("Database connection failed!")
+    console.error(err)
+    process.exit(1)
   } finally {
-    await prisma.$disconnect();
+    await prisma.$disconnect()
   }
 }
-main();
+
+main()

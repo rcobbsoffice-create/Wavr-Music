@@ -1708,6 +1708,13 @@ export default function ProducerDashboard() {
                       setDetectingBpm(true);
                       setDetectError("");
                       try {
+                        console.log("--- DEBUG: Supabase Upload Start ---");
+                        console.log("Bucket Name: beats");
+                        console.log("Key available in browser?", !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+                        if (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+                          console.log("Key starts with:", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.substring(0, 10));
+                        }
+                        
                         // 1. Upload file to Supabase Storage to bypass Vercel limits
                         const fileExt = uploadFile.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;

@@ -67,9 +67,27 @@ def analyze():
 
     try:
         y, sr = librosa.load(tmp_path, sr=None, mono=True, duration=120)
-        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        bpm = int(round(float(np.atleast_1d(tempo)[0])))
-        key = detect_key(y, sr)
+        # Enhanced BPM detection
+        onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+        tempo, _ = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr)
+        bpm = int(round(float(tempo)))
+
+        # Enhanced Key detection (using chroma features)
+        chroma = librosa.feature.chroma_stft(y=y, sr=sr)
+        mean_chroma = np.mean(chroma, axis=1)
+        
+        keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        major_profile = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+        minor_profile = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+        
+        major_correlations = [np.corrcoef(mean_chroma, np.roll(major_profile, i))[0, 1] for i in range(12)]
+        minor_correlations = [np.corrcoef(mean_chroma, np.roll(minor_profile, i))[0, 1] for i in range(12)]
+        
+        if max(major_correlations) > max(minor_correlations):
+            key = keys[np.argmax(major_correlations)] + " Major"
+        else:
+            key = keys[np.argmax(minor_correlations)] + " Minor"
+
         return jsonify({"bpm": bpm, "key": key})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

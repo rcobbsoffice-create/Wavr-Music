@@ -76,10 +76,26 @@ export async function POST(req: NextRequest) {
         .trim();
     }
 
-    // Generate a suggested artwork prompt
+    // Generate a smarter suggested title in "Type Beat" format
     const mood = data.mood || "Energetic";
     const genre = data.genre || "Hip Hop";
-    const suggestedArtworkPrompt = `Album cover for a ${mood} ${genre} beat, professional digital art, high quality, artistic, abstract music visualization`;
+    
+    // Simple mapping for "Type" suggestions based on genre
+    const typeMapping: Record<string, string[]> = {
+      "Hip Hop": ["Drake", "Travis Scott", "J. Cole"],
+      "Trap": ["Metro Boomin", "Future", "Gunna"],
+      "R&B": ["SZA", "Brent Faiyaz", "Summer Walker"],
+      "Pop": ["Dua Lipa", "The Weeknd", "Doja Cat"],
+      "Dancehall": ["Wizkid", "Burna Boy", "Popcaan"],
+      "Rock": ["Machine Gun Kelly", "Post Malone"],
+    };
+
+    const artists = typeMapping[genre] || ["Future"];
+    const suggestedArtist = artists[Math.floor(Math.random() * artists.length)];
+    const suggestedTitle = `${suggestedArtist} x ${mood} Type Beat`;
+
+    // Generate a suggested artwork prompt
+    const suggestedArtworkPrompt = `Professional album cover for a ${mood} ${genre} instrumental, ${suggestedArtist} aesthetic, high quality, artistic music visualization`;
 
     return NextResponse.json({
       bpm: data.bpm,

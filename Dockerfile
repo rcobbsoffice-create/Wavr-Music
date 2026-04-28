@@ -30,4 +30,4 @@ RUN mkdir -p public/uploads/stems && chmod -R 777 public
 EXPOSE 7860
 
 # Run gunicorn when the container launches
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:7860", "stems_server:app", "--timeout", "900"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:7860", "worker:app", "--timeout", "900"]

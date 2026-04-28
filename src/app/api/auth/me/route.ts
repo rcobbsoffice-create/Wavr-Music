@@ -19,6 +19,7 @@ export async function GET() {
         avatar: user.avatar,
         bio: user.bio,
         verified: user.verified,
+        balance: user.balance,
       },
     });
   } catch (err) {

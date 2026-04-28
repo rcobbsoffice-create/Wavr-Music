@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
 
     if (!user) {
       return NextResponse.json(
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
         role: user.role,
         plan: user.plan,
         avatar: user.avatar,
+        balance: user.balance,
       },
     });
 

@@ -10,6 +10,7 @@ export interface AuthUser {
   role: UserRole;
   verified?: boolean;
   plan?: string;
+  balance?: number;
 }
 
 

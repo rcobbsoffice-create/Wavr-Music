@@ -66,19 +66,40 @@ export async function POST(
   const workerUrl = process.env.STEMS_WORKER_URL;
   if (workerUrl) {
     try {
+      // Build full audio URL
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const audioUrl = beat.audioFile?.startsWith("http") 
+        ? beat.audioFile 
+        : `${appUrl}${beat.audioFile}`;
+
       const resp = await fetch(`${workerUrl}/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ beatId: id, audioPath: beat.audioFile }),
+        body: JSON.stringify({ 
+          beatId: id, 
+          audioUrl: audioUrl,
+          // Optional: callbackUrl: `${appUrl}/api/beats/${id}/stems/callback`
+        }),
       });
-      if (!resp.ok) throw new Error("Worker returned error");
+
+      if (!resp.ok) {
+        const errorDetail = await resp.text();
+        throw new Error(`Worker failed: ${errorDetail}`);
+      }
+
       const result = await resp.json() as { stems: { type: string; filePath: string }[] };
 
       await Promise.all(
         result.stems.map((s: { type: string; filePath: string }) =>
           prisma.beatStem.update({
             where: { beatId_type: { beatId: id, type: s.type } },
-            data: { filePath: s.filePath, status: "ready" },
+            data: { 
+              // If worker returned a full URL or a relative path, we store it.
+              // Note: If worker is on HF, these paths might not be accessible 
+              // unless we also download them. For now, we assume local or shared storage.
+              filePath: s.filePath, 
+              status: "ready" 
+            },
           })
         )
       );

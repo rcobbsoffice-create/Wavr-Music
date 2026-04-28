@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
           plan: user.plan,
           avatar: user.avatar,
           verified: user.verified,
+          balance: user.balance,
         },
       },
       { status: 201 }

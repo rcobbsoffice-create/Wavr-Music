@@ -261,10 +261,43 @@ function MerchTab() {
     }
   }
 
+  const merchServices = [
+    { id: "setup", name: "Pro Store Setup", price: 49.99, desc: "We optimize your Printful settings, shipping, and tax profiles." },
+    { id: "design-basic", name: "Basic Logo/Graphic", price: 29.99, desc: "Professional high-res graphic for 1 item." },
+    { id: "design-full", name: "Collection Design", price: 149.99, desc: "A full themed collection (5 items) with custom artwork." },
+  ];
+
+  async function handleOrderService(serviceId: string) {
+    if (!confirm("Order this service? The amount will be charged to your account balance.")) return;
+    try {
+      const res = await fetch("/api/merch/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Service requested successfully! We will contact you soon.");
+      } else {
+        alert(data.error || "Failed to request service.");
+      }
+    } catch {
+      alert("Network error.");
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-black text-white">My Merch</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <h1 className="text-2xl font-black text-white">My Merch</h1>
+          {user?.balance !== undefined && (
+            <div className="bg-green-900/20 border border-green-800/30 px-3 py-1 rounded-full flex items-center gap-2">
+              <span className="text-green-500 text-[10px] font-bold uppercase tracking-widest">Balance</span>
+              <span className="text-white font-black text-sm">${user.balance.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
         
         {/* Printful Integration Box */}
         <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-2 px-4">
@@ -367,6 +400,35 @@ function MerchTab() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Merch Services */}
+      <div className="bg-gradient-to-br from-red-950/20 to-gray-900 border border-red-900/20 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center text-red-500">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-white">Merch Design & Setup Services</h2>
+            <p className="text-gray-500 text-sm">Need help growing your brand? Hire our experts.</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {merchServices.map((s) => (
+            <div key={s.id} className="bg-gray-950/50 border border-gray-800 rounded-xl p-5 hover:border-red-600/40 transition-all group">
+              <h3 className="text-white font-bold text-lg mb-1">{s.name}</h3>
+              <p className="text-red-500 font-black text-xl mb-3">${s.price}</p>
+              <p className="text-gray-400 text-sm mb-6 leading-relaxed">{s.desc}</p>
+              <button 
+                onClick={() => handleOrderService(s.id)}
+                className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-red-900/20"
+              >
+                Order Service
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

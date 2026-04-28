@@ -45,6 +45,20 @@ model User {
   sessions         Session[]
   supportTickets   SupportTicket[]
   merchProducts    MerchProduct[]     @relation("ProducerMerch")
+  merchServices    MerchService[]     @relation("ProducerServices")
+  balance          Float              @default(0)
+}
+
+model MerchService {
+  id          String   @id @default(cuid())
+  producerId  String
+  serviceType String   // e.g., "design", "setup", "marketing"
+  status      String   @default("pending")
+  price       Float
+  details     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  producer    User     @relation("ProducerServices", fields: [producerId], references: [id])
 }
 
 model Session {

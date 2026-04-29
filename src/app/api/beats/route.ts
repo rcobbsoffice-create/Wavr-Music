@@ -175,17 +175,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(beat, { status: 201 });
   } catch (err: any) {
-    const errorData = {
-      message: err.message,
-      stack: err.stack,
-      code: err.code,
-      timestamp: new Date().toISOString()
-    };
-    try {
-      require('fs').writeFileSync('api_error.log', JSON.stringify(errorData, null, 2));
-    } catch (e) {}
-
-    console.error("[POST /api/beats] Detailed Error:", errorData);
-    return NextResponse.json({ error: "Internal server error", details: err.message, code: err.code }, { status: 500 });
+    console.error("[POST /api/beats] Error:", { message: err.message, code: err.code });
+    return NextResponse.json({ error: "Internal server error", details: err.message }, { status: 500 });
   }
 }

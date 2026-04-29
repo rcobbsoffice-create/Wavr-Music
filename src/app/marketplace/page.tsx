@@ -28,11 +28,9 @@ export default function MarketplacePage() {
   const { currentBeat, isPlaying, setCurrentBeat } = usePlayer();
 
   useEffect(() => {
-    console.log("Fetching beats from /api/beats...");
     fetch("/api/beats")
       .then((r) => r.json())
       .then((data) => {
-        console.log("Beats data received:", data);
         setBeats(Array.isArray(data) ? data : []);
         setLoading(false);
       })

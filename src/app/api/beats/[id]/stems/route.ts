@@ -130,6 +130,4 @@ export async function POST(
       message: "Stem separation worker not configured. Set STEMS_WORKER_URL in .env.local pointing to your Demucs server.",
     });
   }
-
-  return NextResponse.json({ ok: true });
 }

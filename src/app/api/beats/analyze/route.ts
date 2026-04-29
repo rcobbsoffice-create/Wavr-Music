@@ -64,35 +64,11 @@ export async function POST(req: NextRequest) {
     const mood = data.mood || "Energetic";
     const genre = data.genre || "Hip Hop";
 
-    // 1. Build the title from the ORIGINAL filename (not the cloud storage name)
-    let suggestedTitle = "";
-    if (originalFileName) {
-      suggestedTitle = originalFileName
-        .replace(/\.[^/.]+$/, "")   // remove extension
-        .replace(/[_-]/g, " ")       // underscores/dashes → spaces
-        .replace(/\s+/g, " ")
-        .trim();
-      // Capitalize each word
-      suggestedTitle = suggestedTitle
-        .split(" ")
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
-    }
-
-    // Fallback: build a "Type Beat" title from genre/mood
-    if (!suggestedTitle) {
-      const typeMapping: Record<string, string[]> = {
-        "Hip Hop": ["Drake", "Travis Scott", "J. Cole"],
-        "Trap":    ["Metro Boomin", "Future", "Gunna"],
-        "R&B":     ["SZA", "Brent Faiyaz", "Summer Walker"],
-        "Pop":     ["Dua Lipa", "The Weeknd", "Doja Cat"],
-        "Dancehall":["Wizkid", "Burna Boy", "Popcaan"],
-        "Rock":    ["Machine Gun Kelly", "Post Malone"],
-      };
-      const artists = typeMapping[genre] || ["Future"];
-      const suggestedArtist = artists[Math.floor(Math.random() * artists.length)];
-      suggestedTitle = `${suggestedArtist} x ${mood} Type Beat`;
-    }
+    // 1. Generate a unique title based on energy/mood and genre, prepended by the producer's name
+    const producerName = user.name || "Producer";
+    const titleSuffixes = ["Anthem", "Vibe", "Groove", "Type Beat", "Instrumental", "Flow", "Wave", "Banger"];
+    const randomSuffix = titleSuffixes[Math.floor(Math.random() * titleSuffixes.length)];
+    const suggestedTitle = `${producerName} - ${mood} ${genre} ${randomSuffix}`;
 
     // 2. Build a unique artwork prompt (include timestamp so images never repeat)
     const uniqueSeed = Date.now();

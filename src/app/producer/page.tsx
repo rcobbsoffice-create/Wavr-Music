@@ -1812,7 +1812,7 @@ export default function ProducerDashboard() {
                         const res = await fetch("/api/beats/analyze", { 
                           method: "POST", 
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ audioUrl: publicUrl }) 
+                          body: JSON.stringify({ audioUrl: publicUrl, originalFileName: uploadFile.name }) 
                         });
                         
                         const data = await res.json();

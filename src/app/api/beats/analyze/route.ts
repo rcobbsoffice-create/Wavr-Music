@@ -8,9 +8,8 @@ export const maxDuration = 60;
 
 /**
  * POST /api/beats/analyze
- * Accepts multipart/form-data with field "audio".
- * Proxies to the stems server /analyze endpoint.
- * Returns { bpm: number, key: string }
+ * Accepts JSON { audioUrl, originalFileName } or multipart with "audio" field.
+ * Returns { bpm, key, suggestedTitle, suggestedArtworkPrompt }
  */
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
@@ -19,19 +18,21 @@ export async function POST(req: NextRequest) {
   const contentType = req.headers.get("content-type") ?? "";
   let audioUrl = "";
   let file: File | null = null;
-  let fileName = "audio.mp3";
+  let originalFileName = "";
 
   if (contentType.includes("application/json")) {
     const body = await req.json();
     audioUrl = body.audioUrl;
+    // Use the original browser filename if provided
+    originalFileName = body.originalFileName ?? "";
   } else if (contentType.includes("multipart/form-data")) {
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;
     if (audioFile) {
-      // Forward the file (limited by Vercel to 4.5MB)
+      file = audioFile;
+      originalFileName = audioFile.name;
       const fd = new FormData();
       fd.append("audio", audioFile, audioFile.name);
-      
       const res = await fetch(`${STEMS_URL}/analyze`, {
         method: "POST",
         headers: {
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(await res.json());
     }
     audioUrl = formData.get("audioUrl") as string;
+    originalFileName = formData.get("originalFileName") as string ?? "";
   }
 
   if (!audioUrl) {
@@ -49,7 +51,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Forward the URL to the Python stems server
     const res = await fetch(`${STEMS_URL}/analyze?url=${encodeURIComponent(audioUrl)}`, {
       method: "POST",
       headers: {
@@ -60,42 +61,43 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Analysis failed");
 
-    // Better title suggestion: extract from URL if file is missing
-    let suggestedTitle = "";
-    if (file) {
-      suggestedTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim();
-    } else if (audioUrl) {
-      // Extract from Supabase URL (e.g. .../beats/temp-analyze/123-my-beat.mp3)
-      const urlParts = audioUrl.split('/');
-      const lastPart = urlParts[urlParts.length - 1];
-      // Remove timestamp prefix (123456789-) if present
-      suggestedTitle = lastPart
-        .replace(/^\d+-/, "") 
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[_-]/g, " ")
-        .trim();
-    }
-
-    // Generate a smarter suggested title in "Type Beat" format
     const mood = data.mood || "Energetic";
     const genre = data.genre || "Hip Hop";
-    
-    // Simple mapping for "Type" suggestions based on genre
-    const typeMapping: Record<string, string[]> = {
-      "Hip Hop": ["Drake", "Travis Scott", "J. Cole"],
-      "Trap": ["Metro Boomin", "Future", "Gunna"],
-      "R&B": ["SZA", "Brent Faiyaz", "Summer Walker"],
-      "Pop": ["Dua Lipa", "The Weeknd", "Doja Cat"],
-      "Dancehall": ["Wizkid", "Burna Boy", "Popcaan"],
-      "Rock": ["Machine Gun Kelly", "Post Malone"],
-    };
 
-    const artists = typeMapping[genre] || ["Future"];
-    const suggestedArtist = artists[Math.floor(Math.random() * artists.length)];
-    const suggestedTitle = `${suggestedArtist} x ${mood} Type Beat`;
+    // 1. Build the title from the ORIGINAL filename (not the cloud storage name)
+    let suggestedTitle = "";
+    if (originalFileName) {
+      suggestedTitle = originalFileName
+        .replace(/\.[^/.]+$/, "")   // remove extension
+        .replace(/[_-]/g, " ")       // underscores/dashes → spaces
+        .replace(/\s+/g, " ")
+        .trim();
+      // Capitalize each word
+      suggestedTitle = suggestedTitle
+        .split(" ")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
 
-    // Generate a suggested artwork prompt
-    const suggestedArtworkPrompt = `Professional album cover for a ${mood} ${genre} instrumental, ${suggestedArtist} aesthetic, high quality, artistic music visualization`;
+    // Fallback: build a "Type Beat" title from genre/mood
+    if (!suggestedTitle) {
+      const typeMapping: Record<string, string[]> = {
+        "Hip Hop": ["Drake", "Travis Scott", "J. Cole"],
+        "Trap":    ["Metro Boomin", "Future", "Gunna"],
+        "R&B":     ["SZA", "Brent Faiyaz", "Summer Walker"],
+        "Pop":     ["Dua Lipa", "The Weeknd", "Doja Cat"],
+        "Dancehall":["Wizkid", "Burna Boy", "Popcaan"],
+        "Rock":    ["Machine Gun Kelly", "Post Malone"],
+      };
+      const artists = typeMapping[genre] || ["Future"];
+      const suggestedArtist = artists[Math.floor(Math.random() * artists.length)];
+      suggestedTitle = `${suggestedArtist} x ${mood} Type Beat`;
+    }
+
+    // 2. Build a unique artwork prompt (include timestamp so images never repeat)
+    const uniqueSeed = Date.now();
+    const suggestedArtworkPrompt = 
+      `Professional album cover art for a ${mood} ${genre} beat, abstract cinematic, high quality — seed${uniqueSeed}`;
 
     return NextResponse.json({
       bpm: data.bpm,

@@ -13,10 +13,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    // In a real app, you'd call OpenAI DALL-E or Stable Diffusion here.
-    // For this demo, we use pollinations.ai which is a free redirect to Stable Diffusion.
-    const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&width=1024&height=1024&nologo=true`;
+    // Strip the internal seed hint we embed for uniqueness
+    const cleanPrompt = prompt.replace(/\s*—\s*seed\d+$/, "").trim();
+
+    // Use a high-entropy seed so every generation is unique
+    const seed = Date.now() + Math.floor(Math.random() * 1_000_000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?seed=${seed}&width=1024&height=1024&nologo=true`;
 
     // Fetch the generated image
     const imageRes = await fetch(imageUrl);

@@ -40,6 +40,14 @@ export default function StemPlayer({ beatId, hasExclusive = false }: StemPlayerP
   const processing = stems.some((s) => s.status === "processing" || s.status === "pending");
   const hasAny = stems.length > 0;
 
+  function getAudioUrl(url: string | null) {
+    if (!url) return undefined;
+    if (url.includes("huggingface.co")) {
+      return `/api/audio?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
   function toggleStem(type: string) {
     setActiveStem(activeStem === type ? null : type);
   }
@@ -150,7 +158,7 @@ export default function StemPlayer({ beatId, hasExclusive = false }: StemPlayerP
               {stem.filePath && (
                 <audio
                   ref={(el) => { if (el) audioRefs.current[stem.type] = el; }}
-                  src={stem.filePath}
+                  src={getAudioUrl(stem.filePath)}
                   loop
                   style={{ display: "none" }}
                 />
@@ -167,7 +175,7 @@ export default function StemPlayer({ beatId, hasExclusive = false }: StemPlayerP
             {readyStems.filter((s) => s.filePath).map((s) => (
               <a
                 key={s.type}
-                href={s.filePath!}
+                href={getAudioUrl(s.filePath)}
                 download
                 className="text-xs text-purple-400 hover:text-purple-300 bg-purple-900/20 border border-purple-700/30 px-3 py-1 rounded-lg"
               >

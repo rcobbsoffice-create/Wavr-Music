@@ -21,7 +21,10 @@ export default function AudioPlayer() {
       audio.src = "";
       return;
     }
-    audio.src = currentBeat.audioFile;
+    const audioSrc = currentBeat.audioFile.includes("huggingface.co")
+      ? `/api/audio?url=${encodeURIComponent(currentBeat.audioFile)}`
+      : currentBeat.audioFile;
+    audio.src = audioSrc;
     audio.load();
     if (isPlaying) {
       audio.play().catch(() => {});

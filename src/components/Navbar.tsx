@@ -74,39 +74,8 @@ export default function Navbar() {
             </select>
           </div>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/"
-              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
-            >
-              Home
-            </Link>
-            <Link
-              href="/marketplace"
-              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
-            >
-              Marketplace
-            </Link>
-            <Link
-              href="/about"
-              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
-            >
-              About Us
-            </Link>
-            <Link
-              href="/support/contact"
-              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
-            >
-              Contact
-            </Link>
-            <Link
-              href="/news"
-              className="text-gray-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors duration-200"
-            >
-              News
-            </Link>
-          </div>
+          {/* Empty Space for removed Nav Links / Search */}
+          <div className="hidden md:flex flex-1 max-w-xl mx-8 relative"></div>
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
@@ -189,41 +158,6 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-gray-900 border-t border-gray-800 px-4 py-4 space-y-3">
-          <Link
-            href="/"
-            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
-            onClick={() => setMobileOpen(false)}
-          >
-            Home
-          </Link>
-          <Link
-            href="/marketplace"
-            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
-            onClick={() => setMobileOpen(false)}
-          >
-            Marketplace
-          </Link>
-          <Link
-            href="/about"
-            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
-            onClick={() => setMobileOpen(false)}
-          >
-            About Us
-          </Link>
-          <Link
-            href="/support/contact"
-            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
-            onClick={() => setMobileOpen(false)}
-          >
-            Contact
-          </Link>
-          <Link
-            href="/news"
-            className="block text-gray-300 hover:text-white text-xs font-bold uppercase tracking-wider py-2"
-            onClick={() => setMobileOpen(false)}
-          >
-            News
-          </Link>
           <div className="pt-2 flex gap-3">
             {user ? (
               <>

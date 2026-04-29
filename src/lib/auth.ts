@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'producer';
+export type UserRole = 'admin' | 'producer' | 'sync-licensor';
 
 export interface AuthUser {
   email: string;
@@ -9,6 +9,7 @@ export interface AuthUser {
 export const DEMO_ACCOUNTS = [
   { email: 'admin@wavr.com', password: 'admin123', role: 'admin' as UserRole, name: 'Platform Admin' },
   { email: 'producer@wavr.com', password: 'producer123', role: 'producer' as UserRole, name: 'DJ Phantom' },
+  { email: 'sync@wavr.com', password: 'sync123', role: 'sync-licensor' as UserRole, name: 'Sync Licensor' },
 ];
 
 export function authenticate(email: string, password: string): AuthUser | null {
@@ -23,6 +24,7 @@ export function getDashboardPath(role: string): string {
   switch (role) {
     case 'admin': return '/admin';
     case 'producer': return '/producer';
+    case 'sync-licensor': return '/sync-licensor';
     default: return '/producer';
   }
 }

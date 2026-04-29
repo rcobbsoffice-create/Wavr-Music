@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { usePlayer } from "@/components/PlayerContext";
@@ -23,6 +23,7 @@ interface MyBeat {
   bpm: number;
   key: string;
   mood: string;
+  description?: string | null;
   priceBasic: number;
   pricePremium: number;
   priceExclusive: number;
@@ -34,15 +35,19 @@ interface MyBeat {
   audioFile?: string | null;
   artwork?: string | null;
   stems?: { type: string; status: string }[];
+  type?: string;
+  kitFiles?: string[];
   createdAt: string;
 }
 
 
-type Tab = "overview" | "beats" | "merch" | "earnings" | "analytics" | "licensing" | "payouts" | "settings";
+type Tab = "overview" | "beats" | "sound-kits" | "collections" | "merch" | "earnings" | "analytics" | "licensing" | "payouts" | "settings";
 
 const sidebarLinks = [
   { label: "Overview",  tab: "overview",  icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
   { label: "My Beats",  tab: "beats",     icon: "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" },
+  { label: "Sound Kits", tab: "sound-kits", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
+  { label: "Collections", tab: "collections", icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
   { label: "My Merch",  tab: "merch",     icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" },
   { label: "Earnings",  tab: "earnings",  icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 16v-1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { label: "Analytics", tab: "analytics", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
@@ -445,6 +450,12 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
+  const [currPass, setCurrPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confPass, setConfPass] = useState("");
+  const [passLoading, setPassLoading] = useState(false);
+  const [passMsg, setPassMsg] = useState("");
+
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
@@ -478,6 +489,26 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
       setCoverFile(null);
     } catch { setMsg("Network error."); }
     finally { setSaving(false); }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPass !== confPass) { setPassMsg("Passwords do not match."); return; }
+    if (newPass.length < 8) { setPassMsg("New password must be at least 8 characters."); return; }
+    
+    setPassLoading(true); setPassMsg("");
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: currPass, newPassword: newPass }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPassMsg(data.error ?? "Failed to change password."); return; }
+      setPassMsg("Password changed successfully!");
+      setCurrPass(""); setNewPass(""); setConfPass("");
+    } catch { setPassMsg("Network error."); }
+    finally { setPassLoading(false); }
   }
 
   return (
@@ -563,6 +594,45 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
             ))}
           </div>
         </div>
+
+        {/* Change Password */}
+        <form onSubmit={handleChangePassword} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+          <h2 className="text-white font-bold">Change Password</h2>
+          {passMsg && <p className={`text-sm ${passMsg.includes("success") ? "text-green-400" : "text-red-400"}`}>{passMsg}</p>}
+          
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1">Current Password</label>
+              <input
+                type="password" value={currPass} onChange={e => setCurrPass(e.target.value)} required
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1">New Password</label>
+              <input
+                type="password" value={newPass} onChange={e => setNewPass(e.target.value)} required
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
+              />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1">Confirm New Password</label>
+              <input
+                type="password" value={confPass} onChange={e => setConfPass(e.target.value)} required
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <button
+              type="submit" disabled={passLoading}
+              className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl border border-gray-700 transition-colors disabled:opacity-50"
+            >
+              {passLoading ? "Updating…" : "Update Password"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -600,10 +670,13 @@ export default function ProducerDashboard() {
   const [uploadBpm, setUploadBpm] = useState("");
   const [uploadKey, setUploadKey] = useState("");
   const [uploadMood, setUploadMood] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
   const [uploadTags, setUploadTags] = useState("");
   const [uploadPriceBasic, setUploadPriceBasic] = useState("29.99");
   const [uploadPricePremium, setUploadPricePremium] = useState("99.99");
   const [uploadPriceExclusive, setUploadPriceExclusive] = useState("299.99");
+  const [uploadType, setUploadType] = useState("beat");
+  const [kitFiles, setKitFiles] = useState<File[]>([]);
   
   // AI Artwork Generation
   const [artworkPrompt, setArtworkPrompt] = useState("");
@@ -622,6 +695,7 @@ export default function ProducerDashboard() {
   const [editBpm, setEditBpm] = useState("");
   const [editKey, setEditKey] = useState("");
   const [editMood, setEditMood] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editPriceBasic, setEditPriceBasic] = useState("");
   const [editPricePremium, setEditPricePremium] = useState("");
@@ -637,8 +711,15 @@ export default function ProducerDashboard() {
   const [separatingStems, setSeparatingStems] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const filteredMyBeats = useMemo(() => {
+    if (activeTab === "beats") return myBeatsData.filter(b => b.type === "beat" || !b.type);
+    if (activeTab === "sound-kits") return myBeatsData.filter(b => b.type === "sound-kit");
+    if (activeTab === "collections") return myBeatsData.filter(b => b.type === "collection");
+    return myBeatsData;
+  }, [myBeatsData, activeTab]);
+
   useEffect(() => {
-    if (activeTab === "beats" || activeTab === "analytics") {
+    if (activeTab === "beats" || activeTab === "sound-kits" || activeTab === "collections" || activeTab === "analytics") {
       fetchMyBeats();
     }
   }, [activeTab]);
@@ -681,8 +762,9 @@ export default function ProducerDashboard() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     setUploadError("");
-    if (!uploadTitle || !uploadGenre || !uploadBpm || !uploadKey) {
-      setUploadError("Title, genre, BPM, and key are required.");
+    const isBeat = uploadType === "beat";
+    if (!uploadTitle || !uploadGenre || (isBeat && (!uploadBpm || !uploadKey))) {
+      setUploadError(isBeat ? "Title, genre, BPM, and key are required." : "Title and genre are required.");
       return;
     }
     setUploading(true);
@@ -728,12 +810,27 @@ export default function ProducerDashboard() {
         finalArtworkUrl = editArtworkPreview;
       }
 
+      let uploadedKitFiles: string[] = [];
+      if (uploadType === "sound-kit" && kitFiles.length > 0) {
+        for (const f of kitFiles) {
+          const fileExt = f.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `kits/${fileName}`;
+          const { error: kitUploadError } = await supabase.storage.from('beats').upload(filePath, f);
+          if (!kitUploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('beats').getPublicUrl(filePath);
+            uploadedKitFiles.push(publicUrl);
+          }
+        }
+      }
+
       const fd = new FormData();
       fd.append("title", uploadTitle);
       fd.append("genre", uploadGenre);
-      fd.append("bpm", uploadBpm);
-      fd.append("key", uploadKey);
+      fd.append("bpm", uploadBpm || "0");
+      fd.append("key", uploadKey || "N/A");
       fd.append("mood", uploadMood);
+      fd.append("description", uploadDescription);
       fd.append("tags", uploadTags ? JSON.stringify(uploadTags.split(",").map(t => t.trim()).filter(Boolean)) : "[]");
       fd.append("priceBasic", uploadPriceBasic);
       fd.append("pricePremium", uploadPricePremium);
@@ -742,6 +839,8 @@ export default function ProducerDashboard() {
       // Send the Supabase URL instead of the raw file
       if (finalAudioUrl) fd.append("audioUrl", finalAudioUrl);
       if (finalArtworkUrl) fd.append("artworkUrl", finalArtworkUrl);
+      fd.append("type", uploadType);
+      if (uploadedKitFiles.length > 0) fd.append("kitFiles", JSON.stringify(uploadedKitFiles));
 
       const validCollabs = collabs.filter((c) => c.email.trim() && parseFloat(c.split) > 0);
       if (validCollabs.length > 0) fd.append("collaborators", JSON.stringify(validCollabs));
@@ -755,8 +854,9 @@ export default function ProducerDashboard() {
       // Reset form and close
       setShowUploadModal(false);
       setUploadTitle(""); setUploadGenre(""); setUploadBpm(""); setUploadKey("");
-      setUploadMood(""); setUploadTags(""); setUploadFile(null);
+      setUploadMood(""); setUploadDescription(""); setUploadTags(""); setUploadFile(null);
       setUploadPriceBasic("29.99"); setUploadPricePremium("99.99"); setUploadPriceExclusive("299.99");
+      setUploadType("beat"); setKitFiles([]);
       setEditArtworkFile(null); setEditArtworkPreview(null); setArtworkPrompt("");
       // Refresh beats if on that tab
       if (activeTab === "beats") fetchMyBeats();
@@ -778,6 +878,7 @@ export default function ProducerDashboard() {
     setEditBpm(String(beat.bpm));
     setEditKey(beat.key);
     setEditMood(beat.mood ?? "");
+    setEditDescription(beat.description ?? "");
     setEditTags("");
     setEditPriceBasic(String(beat.priceBasic));
     setEditPricePremium(String(beat.pricePremium ?? ""));
@@ -829,6 +930,7 @@ export default function ProducerDashboard() {
           bpm: parseInt(editBpm, 10),
           key: editKey.trim(),
           mood: editMood,
+          description: editDescription,
           tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
           priceBasic: parseFloat(editPriceBasic),
           pricePremium: parseFloat(editPricePremium),
@@ -1052,13 +1154,25 @@ export default function ProducerDashboard() {
           </div>
         )}
 
-        {/* My Beats Tab */}
-        {activeTab === "beats" && (
+        {/* My Beats / Sound Kits / Collections Tabs */}
+        {(activeTab === "beats" || activeTab === "sound-kits" || activeTab === "collections") && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-black text-white">My Beats</h1>
-              <button onClick={() => setShowUploadModal(true)} className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                + Upload New Beat
+              <h1 className="text-2xl font-black text-white">
+                {activeTab === "beats" ? "My Beats" : 
+                 activeTab === "sound-kits" ? "My Sound Kits" : 
+                 "My Collections"}
+              </h1>
+              <button 
+                onClick={() => {
+                  setUploadType(activeTab === "beats" ? "beat" : activeTab === "sound-kits" ? "sound-kit" : "collection");
+                  setShowUploadModal(true);
+                }} 
+                className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+              >
+                + {activeTab === "beats" ? "Upload New Beat" : 
+                   activeTab === "sound-kits" ? "Upload Sound Kit" : 
+                   "Create Collection"}
               </button>
             </div>
 
@@ -1076,20 +1190,34 @@ export default function ProducerDashboard() {
                   </div>
                 ))}
               </div>
-            ) : myBeatsData.length === 0 ? (
+            ) : filteredMyBeats.length === 0 ? (
               <div className="text-center py-20 bg-gray-900 border border-gray-800 border-dashed rounded-2xl">
                 <svg className="w-12 h-12 text-gray-700 mx-auto mb-3" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
-                <p className="text-gray-400 font-semibold mb-1">No beats yet</p>
-                <p className="text-gray-600 text-sm mb-4">Upload your first beat to start selling</p>
-                <button onClick={() => setShowUploadModal(true)} className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                  + Upload New Beat
+                <p className="text-gray-400 font-semibold mb-1">
+                  {activeTab === "beats" ? "No beats yet" : 
+                   activeTab === "sound-kits" ? "No sound kits yet" : 
+                   "No collections yet"}
+                </p>
+                <p className="text-gray-600 text-sm mb-4">
+                  {activeTab === "beats" ? "Upload your first beat to start selling" : 
+                   activeTab === "sound-kits" ? "Create your first sound kit" : 
+                   "Bundle your beats into a collection"}
+                </p>
+                <button 
+                  onClick={() => {
+                    setUploadType(activeTab === "beats" ? "beat" : activeTab === "sound-kits" ? "sound-kit" : "collection");
+                    setShowUploadModal(true);
+                  }} 
+                  className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  + Create New
                 </button>
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {myBeatsData.map((beat) => (
+                {filteredMyBeats.map((beat) => (
                   <div key={beat.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-purple-700/40 transition-all group">
 
                      {/* Artwork + Play Button */}
@@ -1524,6 +1652,7 @@ export default function ProducerDashboard() {
                         setEditTitle(data.title);
                         setEditBpm(data.bpm);
                         setEditKey(data.key);
+                        if (data.description) setEditDescription(data.description);
                         
                         if (data.artwork) {
                           const imgRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(data.artwork)}`);
@@ -1590,7 +1719,24 @@ export default function ProducerDashboard() {
                     <option value="draft">Draft (Hidden)</option>
                   </select>
                 </div>
-                <div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1 items-end">
+                  <label className="text-gray-400 text-xs font-medium block">Description</label>
+                  <button type="button" onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/suggest-beat", { method: "POST", body: JSON.stringify({ genre: editGenre, mood: editMood }) });
+                        if (res.ok) {
+                          const data = await res.json();
+                          if (data.description) setEditDescription(data.description);
+                        }
+                      } catch (e) {}
+                  }} className="text-purple-400 hover:text-purple-300 text-[10px] font-bold uppercase">✨ AI Generate</button>
+                </div>
+                <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Describe your beat..." rows={3} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 resize-none"></textarea>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
                   <label className="text-gray-400 text-xs font-medium block mb-1">Tags <span className="text-gray-600">(comma separated)</span></label>
                   <input value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="dark, heavy, melodic" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
                 </div>
@@ -1706,7 +1852,11 @@ export default function ProducerDashboard() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-white font-bold text-lg">Upload New Beat</h2>
+              <h2 className="text-white font-bold text-lg">
+                {uploadType === "beat" ? "Upload New Beat" : 
+                 uploadType === "sound-kit" ? "Upload New Sound Kit" : 
+                 "Upload New Collection"}
+              </h2>
               <button onClick={() => setShowUploadModal(false)} className="text-gray-500 hover:text-white transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1714,6 +1864,32 @@ export default function ProducerDashboard() {
               </button>
             </div>
             <form onSubmit={handleUpload} className="space-y-4">
+              {/* Type Selector */}
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-2">Upload Type</label>
+                <div className="flex gap-2">
+                  {[
+                    { id: "beat", label: "Beat", icon: "🎵" },
+                    { id: "sound-kit", label: "Sound Kit", icon: "🥁" },
+                    { id: "collection", label: "Collection", icon: "📦" }
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setUploadType(t.id)}
+                      className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                        uploadType === t.id
+                          ? "bg-purple-600/20 border-purple-600 text-white"
+                          : "bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600"
+                      }`}
+                    >
+                      <span className="text-xl">{t.icon}</span>
+                      <span className="text-[10px] font-bold uppercase">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* File drop */}
               <div
                 className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center hover:border-purple-600 transition-colors cursor-pointer"
@@ -1733,17 +1909,63 @@ export default function ProducerDashboard() {
                   <p className="text-purple-300 text-sm font-medium">{uploadFile.name}</p>
                 ) : (
                   <>
-                    <p className="text-gray-400 text-sm">Click to select audio file</p>
-                    <p className="text-gray-600 text-xs mt-1">MP3, WAV, FLAC up to 500MB</p>
+                    <p className="text-gray-400 text-sm">
+                      {uploadType === "beat" ? "Click to select audio file" : 
+                       uploadType === "sound-kit" ? "Select main preview or kit zip" : 
+                       "Select collection zip file"}
+                    </p>
+                    <p className="text-gray-600 text-xs mt-1">MP3, WAV, FLAC or ZIP up to 500MB</p>
                   </>
                 )}
               </div>
 
+              {/* Sound Kit Files (Multiple) */}
+              {uploadType === "sound-kit" && (
+                <div className="space-y-2">
+                  <label className="text-gray-400 text-xs font-medium block">Kit Samples / Files</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {kitFiles.map((f, i) => (
+                      <div key={i} className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-300 truncate pr-2">{f.name}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => setKitFiles(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-gray-500 hover:text-red-400"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.multiple = true;
+                        input.onchange = (e: any) => {
+                          const files = Array.from(e.target.files as FileList);
+                          setKitFiles(prev => [...prev, ...files]);
+                        };
+                        input.click();
+                      }}
+                      className="border border-dashed border-gray-700 rounded-lg p-2 text-[10px] text-gray-500 hover:border-purple-600 hover:text-purple-400 transition-all flex items-center justify-center gap-1"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+                      Add Files
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Required fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="text-gray-400 text-xs font-medium block mb-1">Beat Title *</label>
-                  <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Enter beat title" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
+                  <label className="text-gray-400 text-xs font-medium block mb-1">
+                    {uploadType === "beat" ? "Beat Title *" : 
+                     uploadType === "sound-kit" ? "Sound Kit Title *" : 
+                     "Collection Title *"}
+                  </label>
+                  <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder={`Enter ${uploadType} title`} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
                 </div>
                 <div>
                   <label className="text-gray-400 text-xs font-medium block mb-1">Genre *</label>
@@ -1763,14 +1985,18 @@ export default function ProducerDashboard() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1">BPM *</label>
-                  <input value={uploadBpm} onChange={e => setUploadBpm(e.target.value)} type="number" min="40" max="250" placeholder="140" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
-                </div>
-                <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1">Key *</label>
-                  <input value={uploadKey} onChange={e => setUploadKey(e.target.value)} placeholder="e.g. F# Minor" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
-                </div>
+                {uploadType === "beat" && (
+                  <>
+                    <div>
+                      <label className="text-gray-400 text-xs font-medium block mb-1">BPM *</label>
+                      <input value={uploadBpm} onChange={e => setUploadBpm(e.target.value)} type="number" min="40" max="250" placeholder="140" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs font-medium block mb-1">Key *</label>
+                      <input value={uploadKey} onChange={e => setUploadKey(e.target.value)} placeholder="e.g. F# Minor" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
+                    </div>
+                  </>
+                )}
 
                 {/* Auto-detect BPM & Key */}
                 <div className="col-span-2">
@@ -1858,6 +2084,28 @@ export default function ProducerDashboard() {
                     )}
                   </button>
                   {detectError && <p className="text-red-400 text-xs mt-1.5">{detectError}</p>}
+                </div>
+
+                <div className="col-span-2">
+                  <div className="flex justify-between mb-1 items-end">
+                    <label className="text-gray-400 text-xs font-medium block">Description</label>
+                    <button type="button" onClick={async () => {
+                        try {
+                          const res = await fetch("/api/ai/suggest-beat", { method: "POST", body: JSON.stringify({ genre: uploadGenre, mood: uploadMood }) });
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.description) setUploadDescription(data.description);
+                          }
+                        } catch (e) {}
+                    }} className="text-purple-400 hover:text-purple-300 text-[10px] font-bold uppercase">✨ AI Generate</button>
+                  </div>
+                  <textarea 
+                    value={uploadDescription} 
+                    onChange={e => setUploadDescription(e.target.value)} 
+                    placeholder={`Describe your ${uploadType}...`} 
+                    rows={3} 
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 resize-none"
+                  ></textarea>
                 </div>
 
                 <div className="col-span-2">

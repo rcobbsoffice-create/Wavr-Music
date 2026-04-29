@@ -16,9 +16,15 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/sync-licensor")) {
+    if (role !== "sync-licensor") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/producer/:path*"],
+  matcher: ["/admin/:path*", "/producer/:path*", "/sync-licensor/:path*"],
 };

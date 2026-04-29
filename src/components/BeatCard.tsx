@@ -4,6 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Beat } from "@/lib/mockData";
 
+const getSeededRandom = (seed: string, i: number) => {
+  let hash = 0;
+  const str = seed + i;
+  for (let j = 0; j < str.length; j++) {
+    hash = Math.imul(31, hash) + str.charCodeAt(j) | 0;
+  }
+  return (Math.abs(hash) % 1000) / 1000;
+};
+
 const genreGradients: Record<string, string> = {
   Trap: "from-red-600 via-red-900/40 to-black",
   "R&B": "from-gray-800 via-gray-900 to-black",
@@ -17,9 +26,10 @@ interface BeatCardProps {
   beat: Beat;
   onPlay?: (beat: Beat) => void;
   isPlaying?: boolean;
+  viewMode?: "grid" | "list";
 }
 
-export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
+export default function BeatCard({ beat, onPlay, isPlaying, viewMode = "grid" }: BeatCardProps) {
   const router = useRouter();
   const [showLicenses, setShowLicenses] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -53,26 +63,40 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-red-600/50 transition-all duration-300 hover:shadow-lg hover:shadow-red-900/20 group">
+    <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-red-600/50 transition-all duration-300 hover:shadow-lg hover:shadow-red-900/20 group ${viewMode === "list" ? "flex flex-col sm:flex-row" : ""}`}>
       {/* Artwork */}
       <div
-        className={`relative h-44 bg-gradient-to-br ${gradient} cursor-pointer`}
+        className={`relative ${viewMode === "list" ? "w-full sm:w-56 h-32 sm:h-auto shrink-0" : "h-44"} bg-gradient-to-br ${gradient} cursor-pointer overflow-hidden`}
         onClick={() => onPlay?.(beat)}
       >
+        {/* Artwork Image */}
+        {beat.artwork && (
+          <img
+            src={beat.artwork}
+            alt={beat.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+
         {/* Waveform decoration */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-10">
+        <div className={`absolute inset-0 flex items-center justify-center ${beat.artwork ? "opacity-20" : "opacity-10"}`}>
           <svg viewBox="0 0 200 60" className="w-full h-16">
-            {Array.from({ length: 40 }, (_, i) => (
-              <rect
-                key={i}
-                x={i * 5}
-                y={30 - Math.random() * 25}
-                width="3"
-                height={Math.random() * 50 + 10}
-                fill="white"
-                opacity={0.6 + Math.random() * 0.4}
-              />
-            ))}
+            {Array.from({ length: 40 }, (_, i) => {
+              const rand1 = getSeededRandom(beat.id, i * 3);
+              const rand2 = getSeededRandom(beat.id, i * 3 + 1);
+              const rand3 = getSeededRandom(beat.id, i * 3 + 2);
+              return (
+                <rect
+                  key={i}
+                  x={i * 5}
+                  y={30 - rand1 * 25}
+                  width="3"
+                  height={rand2 * 50 + 10}
+                  fill="white"
+                  opacity={0.6 + rand3 * 0.4}
+                />
+              );
+            })}
           </svg>
         </div>
 
@@ -131,7 +155,7 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
       </div>
 
       {/* Info */}
-      <div className="p-4">
+      <div className={`p-4 ${viewMode === "list" ? "flex-1 flex flex-col justify-center" : ""}`}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate">{beat.title || "Untitled Beat"}</h3>

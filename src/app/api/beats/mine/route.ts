@@ -41,6 +41,10 @@ export async function GET() {
       audioFile: b.audioFile,
       artwork: b.artwork,
       stems: b.stems,
+      type: b.type,
+      kitFiles: (() => {
+        try { return b.kitFiles ? JSON.parse(b.kitFiles) : []; } catch { return []; }
+      })(),
       createdAt: b.createdAt.toISOString(),
     }));
 

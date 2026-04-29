@@ -38,7 +38,7 @@ export default function DashboardSidebar({
   // Close sidebar on route change
   useEffect(() => {
     onClose();
-  }, [pathname, onClose]);
+  }, [pathname]); // Removed onClose from dependencies to prevent immediate closing on open
 
   return (
     <>

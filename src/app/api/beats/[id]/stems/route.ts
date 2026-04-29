@@ -90,17 +90,34 @@ export async function POST(
         throw new Error(`Worker failed: ${errorDetail}`);
       }
 
-      // We don't wait for the JSON results here because the worker 
-      // will send them to the callback URL instead.
-      return NextResponse.json({ ok: true, message: "Processing started" });
+      // Read synchronous response in case callback fails (e.g. localhost)
+      const data = await resp.json().catch(() => ({}));
+      if (data.originalWavUrl) {
+        await prisma.beat.update({ where: { id }, data: { audioFile: data.originalWavUrl } });
+      }
+      if (data.stems && typeof data.stems === "object" && !Array.isArray(data.stems)) {
+        for (const [type, url] of Object.entries(data.stems)) {
+          if (url) {
+            await prisma.beatStem.update({
+              where: { beatId_type: { beatId: id, type } },
+              data: { filePath: url as string, status: "ready" }
+            });
+          }
+        }
+      }
 
-    } catch (err) {
+      return NextResponse.json({ ok: true, message: "Processing completed" });
+
+    } catch (err: any) {
       console.error("[Stems] Worker error:", err);
       await prisma.beatStem.updateMany({
         where: { beatId: id },
         data: { status: "failed" },
       });
-      return NextResponse.json({ error: "Stem worker failed. Is STEMS_WORKER_URL configured?" }, { status: 500 });
+      return NextResponse.json(
+        { error: err.message || "Stem worker failed." },
+        { status: 500 }
+      );
     }
   } else {
     // No worker configured — mark as failed with helpful message

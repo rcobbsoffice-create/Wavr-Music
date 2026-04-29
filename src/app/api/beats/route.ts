@@ -34,6 +34,10 @@ export async function GET() {
       status: b.status,
       artwork: b.artwork,
       audioFile: b.audioFile,
+      type: (b as any).type || "beat",
+      kitFiles: (() => {
+        try { return (b as any).kitFiles ? JSON.parse((b as any).kitFiles) : []; } catch { return []; }
+      })(),
     }));
 
     return NextResponse.json(result);
@@ -52,27 +56,35 @@ export async function POST(req: NextRequest) {
 
   try {
     const form = await req.formData();
+    console.log("[POST /api/beats] Received form data keys:", Array.from(form.keys()));
 
-    const title = (form.get("title") as string | null)?.trim();
-    const genre = (form.get("genre") as string | null)?.trim();
+    const title = (form.get("title") as string | null)?.trim() ?? "";
+    const genre = (form.get("genre") as string | null)?.trim() ?? "";
     const bpmStr = form.get("bpm") as string | null;
-    const key = (form.get("key") as string | null)?.trim();
-    const mood = (form.get("mood") as string | null)?.trim() ?? "";
+    const key = (form.get("key") as string | null)?.trim() ?? "N/A";
+    const mood = (form.get("mood") as string | null)?.trim() ?? null;
+    const description = (form.get("description") as string | null)?.trim() ?? null;
     const tagsRaw = (form.get("tags") as string | null) ?? "[]";
-    const priceBasic = parseFloat((form.get("priceBasic") as string) ?? "29.99");
-    const pricePremium = parseFloat((form.get("pricePremium") as string) ?? "99.99");
-    const priceExclusive = parseFloat((form.get("priceExclusive") as string) ?? "299.99");
+    const parsePrice = (val: string | null, def: string) => {
+      const p = parseFloat(val || def);
+      return isNaN(p) ? parseFloat(def) : p;
+    };
+    const priceBasic = parsePrice(form.get("priceBasic") as string, "29.99");
+    const pricePremium = parsePrice(form.get("pricePremium") as string, "99.99");
+    const priceExclusive = parsePrice(form.get("priceExclusive") as string, "299.99");
+    const type = (form.get("type") as string | null) ?? "beat";
     const audioFileEntry = form.get("audio") as File | null;
 
-    if (!title || !genre || !bpmStr || !key) {
+    const isBeat = type === "beat";
+    if (!title || !genre || (isBeat && (!bpmStr || !key))) {
       return NextResponse.json(
-        { error: "Title, genre, BPM, and key are required" },
+        { error: isBeat ? "Title, genre, BPM, and key are required" : "Title and genre are required" },
         { status: 400 }
       );
     }
 
-    const bpm = parseInt(bpmStr, 10);
-    if (isNaN(bpm) || bpm < 40 || bpm > 300) {
+    const bpm = isBeat ? parseInt(bpmStr!, 10) : 0;
+    if (isBeat && (isNaN(bpm) || bpm < 40 || bpm > 300)) {
       return NextResponse.json({ error: "BPM must be between 40 and 300" }, { status: 400 });
     }
 
@@ -86,14 +98,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Save audio file if provided (either raw file or URL)
-    let audioFilePath: string | undefined = (form.get("audioUrl") as string | null) ?? undefined;
+    let audioFilePath: string | null = (form.get("audioUrl") as string | null);
     if (audioFileEntry && audioFileEntry.size > 0) {
       const buffer = Buffer.from(await audioFileEntry.arrayBuffer());
       audioFilePath = await saveUploadedFile(buffer, audioFileEntry.name, "audio");
     }
 
     // Save artwork if provided as URL
-    const artworkUrl = (form.get("artworkUrl") as string | null) ?? undefined;
+    const artworkUrl = (form.get("artworkUrl") as string | null);
 
     const beat = await prisma.beat.create({
       data: {
@@ -102,6 +114,7 @@ export async function POST(req: NextRequest) {
         bpm,
         key,
         mood,
+        description,
         tags,
         priceBasic,
         pricePremium,
@@ -110,7 +123,9 @@ export async function POST(req: NextRequest) {
         audioFile: audioFilePath,
         artwork: artworkUrl,
         status: "active",
-      },
+        type: type as any,
+        kitFiles: (form.get("kitFiles") as string | null) as any, // Expecting JSON string from client
+      } as any,
     });
 
     // Handle collaborators (split sheet)
@@ -159,8 +174,18 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(beat, { status: 201 });
-  } catch (err) {
-    console.error("[POST /api/beats]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err: any) {
+    const errorData = {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      timestamp: new Date().toISOString()
+    };
+    try {
+      require('fs').writeFileSync('api_error.log', JSON.stringify(errorData, null, 2));
+    } catch (e) {}
+
+    console.error("[POST /api/beats] Detailed Error:", errorData);
+    return NextResponse.json({ error: "Internal server error", details: err.message, code: err.code }, { status: 500 });
   }
 }

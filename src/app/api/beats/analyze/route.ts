@@ -64,11 +64,16 @@ export async function POST(req: NextRequest) {
     const mood = data.mood || "Energetic";
     const genre = data.genre || "Hip Hop";
 
-    // 1. Generate a unique title based on energy/mood and genre, prepended by the producer's name
+    // 1. Generate a unique, trend-setting YouTube-style title based on energy/mood and genre
     const producerName = user.name || "Producer";
-    const titleSuffixes = ["Anthem", "Vibe", "Groove", "Type Beat", "Instrumental", "Flow", "Wave", "Banger"];
-    const randomSuffix = titleSuffixes[Math.floor(Math.random() * titleSuffixes.length)];
-    const suggestedTitle = `${producerName} - ${mood} ${genre} ${randomSuffix}`;
+    const uniqueNames = [
+      "VENOM", "GHOST", "LUNAR", "OASIS", "ECLIPSE", "MIRAGE", "APEX", "COSMIC",
+      "NEON", "SHADOW", "PULSE", "ZENITH", "FROST", "BLAZE", "NOVA", "DRIFT",
+      "TITAN", "ONYX", "EMBER", "FLARE", "VORTEX", "NEXUS", "CHRONOS", "ECHO",
+      "SAKURA", "MIDNIGHT", "SAHARA", "PHANTOM", "AURORA", "CYBER", "VELVET"
+    ];
+    const randomName = uniqueNames[Math.floor(Math.random() * uniqueNames.length)];
+    const suggestedTitle = `${producerName} - "${randomName}" | ${mood} ${genre} Type Beat`;
 
     // 2. Build a unique artwork prompt (include timestamp so images never repeat)
     const uniqueSeed = Date.now();

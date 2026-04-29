@@ -757,6 +757,7 @@ export default function ProducerDashboard() {
       setUploadTitle(""); setUploadGenre(""); setUploadBpm(""); setUploadKey("");
       setUploadMood(""); setUploadTags(""); setUploadFile(null);
       setUploadPriceBasic("29.99"); setUploadPricePremium("99.99"); setUploadPriceExclusive("299.99");
+      setEditArtworkFile(null); setEditArtworkPreview(null); setArtworkPrompt("");
       // Refresh beats if on that tab
       if (activeTab === "beats") fetchMyBeats();
       else setActiveTab("beats");

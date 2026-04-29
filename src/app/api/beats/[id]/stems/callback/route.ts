@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(
   req: NextRequest,
@@ -9,49 +8,39 @@ export async function POST(
   const { id } = await params;
   
   try {
-    const formData = await req.formData();
-    const stemTypes = ["drums", "bass", "melody", "other"];
+    const body = await req.json();
+    const { originalWavUrl, stems } = body;
     
+    // 1. Update the main Beat with the high-quality WAV URL
+    if (originalWavUrl) {
+      await prisma.beat.update({
+        where: { id },
+        data: { audioFile: originalWavUrl }
+      });
+      console.log(`[Stems Callback] Updated Beat ${id} with WAV URL: ${originalWavUrl}`);
+    }
+
+    // 2. Update Stem URLs
     const results = [];
-    
-    for (const type of stemTypes) {
-      const file = formData.get(type) as File | null;
-      if (file) {
-        // 1. Upload to Supabase Storage
-        const fileName = `${id}_${type}.wav`;
-        const filePath = `stems/${id}/${fileName}`;
-        
-        const { data, error: uploadError } = await supabase.storage
-          .from('beats')
-          .upload(filePath, file, { upsert: true });
-          
-        if (uploadError) {
-          console.error(`[Stems Callback] Upload error for ${type}:`, uploadError);
-          continue;
+    if (stems && typeof stems === 'object') {
+      for (const [type, url] of Object.entries(stems)) {
+        if (url) {
+          await prisma.beatStem.update({
+            where: { beatId_type: { beatId: id, type } },
+            data: { 
+              filePath: url as string,
+              status: "ready"
+            }
+          });
+          results.push({ type, status: "ready" });
         }
-        
-        // 2. Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('beats')
-          .getPublicUrl(filePath);
-          
-        // 3. Update Database
-        await prisma.beatStem.update({
-          where: { beatId_type: { beatId: id, type } },
-          data: { 
-            filePath: publicUrl,
-            status: "ready"
-          }
-        });
-        
-        results.push({ type, status: "ready" });
       }
     }
     
     return NextResponse.json({ ok: true, results });
     
   } catch (err) {
-    console.error("[Stems Callback] Error:", err);
+    console.error("[Stems Callback] Error processing JSON URLs:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

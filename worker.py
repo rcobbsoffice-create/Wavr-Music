@@ -125,22 +125,53 @@ def process():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        cmd = [sys.executable, "-m", "demucs", "-n", "htdemucs", "-o", str(out_dir), str(abs_audio)]
+        from huggingface_hub import HfApi
+        
+        def upload_to_hf(local_path, hf_path):
+            repo_id = os.environ.get("HF_DATASET_REPO")
+            token = os.environ.get("HF_TOKEN")
+            if not repo_id or not token:
+                print(f"[Worker] Skip HF upload: HF_DATASET_REPO or HF_TOKEN not set")
+                return None
+            
+            print(f"[Worker] Uploading {hf_path} to {repo_id}...")
+            api = HfApi(token=token)
+            try:
+                api.upload_file(
+                    path_or_fileobj=local_path,
+                    path_in_repo=hf_path,
+                    repo_id=repo_id,
+                    repo_type="dataset"
+                )
+                return f"https://huggingface.co/datasets/{repo_id}/resolve/main/{hf_path}?download=true"
+            except Exception as e:
+                print(f"[Worker] HF upload error: {e}")
+                return None
+
+        # 1. Convert the original uploaded file to WAV
+        wav_path = out_dir / f"{beat_id}_original.wav"
+        print(f"[Worker] Converting original to WAV...")
+        subprocess.run(["ffmpeg", "-y", "-i", str(abs_audio), str(wav_path)], check=True, capture_output=True)
+        
+        original_wav_url = upload_to_hf(str(wav_path), f"beats/{beat_id}/original.wav")
+
+        # 2. Run Demucs
+        cmd = [sys.executable, "-m", "demucs", "-n", "htdemucs", "-o", str(out_dir), str(wav_path)]
         print(f"[Demucs] Running: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
         
         if result.returncode != 0:
             return jsonify({"error": "Demucs separation failed", "detail": result.stderr}), 500
 
-        stem_folder = out_dir / "htdemucs" / abs_audio.stem
+        stem_folder = out_dir / "htdemucs" / wav_path.stem
         if not stem_folder.exists():
-            # Fallback for special characters
             subdirs = [d for d in (out_dir / "htdemucs").iterdir() if d.is_dir()]
             if subdirs: stem_folder = subdirs[0]
             else: return jsonify({"error": "Output folder not found"}), 500
 
         name_map = {"drums": "drums", "bass": "bass", "vocals": "melody", "other": "other"}
         stems = []
+        hf_urls = {}
         for demucs_name, platform_name in name_map.items():
             src = stem_folder / f"{demucs_name}.wav"
             if not src.exists(): src = stem_folder / f"{demucs_name}.mp3"
@@ -148,23 +179,27 @@ def process():
             if src.exists():
                 dest = out_dir / f"{beat_id}_{platform_name}.wav"
                 shutil.copy(src, dest)
+                
+                # Upload stem to Hugging Face
+                stem_url = upload_to_hf(str(dest), f"beats/{beat_id}/stems/{platform_name}.wav")
+                if stem_url:
+                    hf_urls[platform_name] = stem_url
+
                 stems.append({
                     "type": platform_name, 
-                    "filePath": f"/uploads/stems/{beat_id}/{beat_id}_{platform_name}.wav"
+                    "filePath": stem_url or f"/uploads/stems/{beat_id}/{beat_id}_{platform_name}.wav"
                 })
 
-        # If callbackUrl is provided, upload stems back to main server
+        # If callbackUrl is provided, upload stems back to main server via JSON URLs
         if callback_url and stems:
-            print(f"[Worker] Sending stems to callback: {callback_url}")
-            files = {}
-            for s in stems:
-                local_path = out_dir / f"{beat_id}_{s['type']}.wav"
-                files[s['type']] = open(local_path, "rb")
-            
-            requests.post(callback_url, data={"beatId": beat_id}, files=files)
-            for f in files.values(): f.close()
+            print(f"[Worker] Sending URLs to callback: {callback_url}")
+            requests.post(callback_url, json={
+                "beatId": beat_id,
+                "originalWavUrl": original_wav_url,
+                "stems": hf_urls
+            })
 
-        return jsonify({"ok": True, "stems": stems})
+        return jsonify({"ok": True, "stems": stems, "originalWavUrl": original_wav_url})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

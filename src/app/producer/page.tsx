@@ -641,6 +641,57 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 
+/**
+ * Trims an audio file to `maxSeconds` using the Web Audio API and re-encodes
+ * it as a WAV blob. This keeps temp uploads small enough for Supabase limits.
+ */
+async function trimAudioFile(file: File, maxSeconds = 45): Promise<File> {
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const arrayBuffer = await file.arrayBuffer();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  ctx.close();
+
+  const trimmedSamples = Math.min(
+    audioBuffer.length,
+    Math.floor(maxSeconds * audioBuffer.sampleRate)
+  );
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+
+  // Build WAV bytes manually (PCM 16-bit)
+  const byteLength = 44 + trimmedSamples * numChannels * 2;
+  const buffer = new ArrayBuffer(byteLength);
+  const view = new DataView(buffer);
+  const writeStr = (off: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+
+  writeStr(0, "RIFF");
+  view.setUint32(4, byteLength - 8, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, trimmedSamples * numChannels * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < trimmedSamples; i++) {
+    for (let c = 0; c < numChannels; c++) {
+      const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(c)[i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  return new File([buffer], `${baseName}_trim.wav`, { type: "audio/wav" });
+}
+
 export default function ProducerDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -2008,27 +2059,35 @@ export default function ProducerDashboard() {
                       setDetectingBpm(true);
                       setDetectError("");
                       try {
-                        // 1. Upload file to Supabase Storage to bypass Vercel limits
-                        const fileExt = uploadFile.name.split('.').pop();
-                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                        // 1. Trim audio to 45 s client-side so it stays within Supabase's
+                        //    bucket size limit even for large WAV files.
+                        let fileToUpload: File;
+                        try {
+                          fileToUpload = await trimAudioFile(uploadFile, 45);
+                        } catch {
+                          // If trimming fails (e.g. unsupported codec) fall back to original
+                          fileToUpload = uploadFile;
+                        }
+
+                        // 2. Upload trimmed file to Supabase temp folder
+                        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.wav`;
                         const filePath = `temp-analyze/${fileName}`;
 
-                        const { data: uploadData, error: uploadError } = await supabase.storage
+                        const { error: uploadError } = await supabase.storage
                           .from('beats')
-                          .upload(filePath, uploadFile);
+                          .upload(filePath, fileToUpload, { contentType: "audio/wav" });
 
                         if (uploadError) {
-                          console.error("Supabase Upload Error Details:", uploadError);
-                          setDetectError(`Upload failed: ${uploadError.message} (Check console for details)`);
+                          setDetectError(`Upload failed: ${uploadError.message}`);
                           return;
                         }
 
-                        // 2. Get the public URL
+                        // 3. Get the public URL
                         const { data: { publicUrl } } = supabase.storage
                           .from('beats')
                           .getPublicUrl(filePath);
 
-                        // 3. Send URL to our analyze API
+                        // 4. Send URL to our analyze API
                         const res = await fetch("/api/beats/analyze", { 
                           method: "POST", 
                           headers: { "Content-Type": "application/json" },
@@ -2047,8 +2106,8 @@ export default function ProducerDashboard() {
                           setArtworkPrompt(data.suggestedArtworkPrompt);
                         }
 
-                        // Optional: Clean up the temp file from Supabase
-                        // await supabase.storage.from('beats').remove([filePath]);
+                        // 5. Clean up the temp file from Supabase
+                        supabase.storage.from('beats').remove([filePath]).catch(() => {});
 
                       } catch (err) {
                         console.error(err);
@@ -2065,14 +2124,14 @@ export default function ProducerDashboard() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                         </svg>
-                        Analyzing audio…
+                        Processing audio…
                       </>
                     ) : (
                       <>
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                         </svg>
-                        {uploadFile ? "✨ Auto-detect BPM & Key (v2)" : "Select an audio file first"}
+                        {uploadFile ? "✨ Auto-detect BPM & Key" : "Select an audio file first"}
                       </>
                     )}
                   </button>

@@ -1055,6 +1055,11 @@ export default function ProducerDashboard() {
     if (activeTab === "beats" || activeTab === "analytics") {
       fetchMyBeats();
     }
+    // Proactively wake the stem worker when the user opens the beats tab
+    // so it's ready by the time they click "Separate Stems" (~30s cold start)
+    if (activeTab === "beats") {
+      fetch("/api/keep-alive").catch(() => {});
+    }
   }, [activeTab]);
 
   async function fetchMyBeats() {

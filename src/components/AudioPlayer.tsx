@@ -10,13 +10,14 @@ export default function AudioPlayer() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
 
-  // When the beat changes, load the new src and play if needed
+  // When the beat changes (or watermarked mode toggles), load and play via <audio>
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     setCurrentTime(0);
     setDuration(0);
-    if (!currentBeat?.audioFile) {
+    // Yield control entirely to WatermarkedPlayer when it's active
+    if (!currentBeat?.audioFile || watermarkedActive) {
       audio.pause();
       audio.src = "";
       return;
@@ -30,25 +31,25 @@ export default function AudioPlayer() {
       audio.play().catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBeat?.id]);
+  }, [currentBeat?.id, watermarkedActive]);
 
-  // Sync play/pause state when toggled without changing the beat
+  // Sync play/pause when toggled without a beat change
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !currentBeat?.audioFile) return;
+    if (!audio || !currentBeat?.audioFile || watermarkedActive) return;
     if (isPlaying) {
       audio.play().catch(() => {});
     } else {
       audio.pause();
     }
-  }, [isPlaying]); // eslint-disable-line
+  }, [isPlaying, watermarkedActive]); // eslint-disable-line
 
-  // Keep volume in sync — mute entirely when WatermarkedPlayer is handling audio
+  // Keep volume in sync
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = watermarkedActive ? 0 : volume / 100;
+      audioRef.current.volume = volume / 100;
     }
-  }, [volume, watermarkedActive]);
+  }, [volume]);
 
   if (!currentBeat) return null;
 
@@ -120,7 +121,9 @@ export default function AudioPlayer() {
             </div>
 
             {/* Progress bar */}
-            {hasAudio ? (
+            {watermarkedActive ? (
+              <p className="text-gray-600 text-xs">Seek on the player above</p>
+            ) : hasAudio ? (
               <div className="flex items-center gap-2 w-full max-w-lg">
                 <span className="text-gray-500 text-xs w-8 text-right tabular-nums">
                   {formatTime(currentTime)}

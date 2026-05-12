@@ -1001,6 +1001,8 @@ export default function ProducerDashboard() {
   // My Beats state
   const [myBeatsData, setMyBeatsData] = useState<MyBeat[]>([]);
   const [beatsLoading, setBeatsLoading] = useState(false);
+  const [beatsView, setBeatsView] = useState<"grid" | "list">("grid");
+  const [copiedBeatId, setCopiedBeatId] = useState<string | null>(null);
 
   // Upload form state
   const [uploadTitle, setUploadTitle] = useState("");
@@ -1448,11 +1450,34 @@ export default function ProducerDashboard() {
         {/* My Beats Tab */}
         {activeTab === "beats" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <h1 className="text-2xl font-black text-white">My Beats</h1>
-              <button onClick={() => setShowUploadModal(true)} className="bg-blue-700 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                + Upload New Beat
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Grid / List toggle */}
+                <div className="flex bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setBeatsView("grid")}
+                    title="Grid view"
+                    className={`px-3 py-2 transition-colors ${beatsView === "grid" ? "bg-blue-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setBeatsView("list")}
+                    title="List view"
+                    className={`px-3 py-2 transition-colors ${beatsView === "list" ? "bg-blue-700 text-white" : "text-gray-500 hover:text-gray-300"}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                </div>
+                <button onClick={() => setShowUploadModal(true)} className="bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+                  + Upload New Beat
+                </button>
+              </div>
             </div>
 
             {beatsLoading ? (
@@ -1476,13 +1501,16 @@ export default function ProducerDashboard() {
                 </svg>
                 <p className="text-gray-400 font-semibold mb-1">No beats yet</p>
                 <p className="text-gray-600 text-sm mb-4">Upload your first beat to start selling</p>
-                <button onClick={() => setShowUploadModal(true)} className="bg-blue-700 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+                <button onClick={() => setShowUploadModal(true)} className="bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
                   + Upload New Beat
                 </button>
               </div>
-            ) : (
+            ) : beatsView === "grid" ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {myBeatsData.map((beat) => (
+                {myBeatsData.map((beat) => {
+                  const beatUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/beat/${beat.id}`;
+                  const stemLabels: Record<string, string> = { drums: "Drums", bass: "Bass", melody: "Melody", other: "Other" };
+                  return (
                   <div key={beat.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-700/30 transition-all group">
 
                      {/* Artwork + Play Button */}
@@ -1490,34 +1518,11 @@ export default function ProducerDashboard() {
                        className={`h-44 relative bg-gradient-to-br ${genreGradients[beat.genre] || "from-blue-600 via-gray-900 to-black"} ${beat.audioFile ? "cursor-pointer" : "cursor-default"}`}
                        onClick={() => {
                          if (!beat.audioFile) return;
-                         setCurrentBeat({
-                           id: beat.id,
-                           title: beat.title,
-                           producer: user?.name ?? "You",
-                           producerId: user?.id ?? "",
-                           genre: beat.genre,
-                           bpm: beat.bpm,
-                           key: beat.key,
-                           mood: beat.mood ?? "",
-                           tags: [],
-                           priceBasic: beat.priceBasic,
-                           pricePremium: beat.pricePremium,
-                           priceExclusive: beat.priceExclusive,
-                           plays: beat.plays,
-                           featured: beat.featured,
-                           status: beat.status,
-                           artwork: beat.artwork ?? null,
-                           audioFile: beat.audioFile ?? null,
-                         });
+                         setCurrentBeat({ id: beat.id, title: beat.title, producer: user?.name ?? "You", producerId: user?.id ?? "", genre: beat.genre, bpm: beat.bpm, key: beat.key, mood: beat.mood ?? "", tags: [], priceBasic: beat.priceBasic, pricePremium: beat.pricePremium, priceExclusive: beat.priceExclusive, plays: beat.plays, featured: beat.featured, status: beat.status, artwork: beat.artwork ?? null, audioFile: beat.audioFile ?? null });
                        }}
                      >
-                       {/* Artwork image (if available) */}
                        {beat.artwork ? (
-                         <img
-                           src={beat.artwork}
-                           alt={beat.title}
-                           className="absolute inset-0 w-full h-full object-cover opacity-70"
-                         />
+                         <img src={beat.artwork} alt={beat.title} className="absolute inset-0 w-full h-full object-cover opacity-70" />
                        ) : (
                          <div className="absolute inset-0 flex items-center justify-center opacity-20">
                            <svg viewBox="0 0 200 60" className="w-full h-16">
@@ -1527,52 +1532,30 @@ export default function ProducerDashboard() {
                            </svg>
                          </div>
                        )}
-
-                       {/* Play / Pause button — hidden if no audio */}
                        <div className="absolute inset-0 flex items-center justify-center">
                          {beat.audioFile ? (
-                           <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-xl ${
-                             currentBeat?.id === beat.id && isPlaying
-                               ? "bg-blue-700 scale-110 shadow-blue-900/20"
-                               : "bg-black/50 backdrop-blur-sm group-hover:bg-blue-900/30 group-hover:scale-110"
-                           }`}>
+                           <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-xl ${currentBeat?.id === beat.id && isPlaying ? "bg-blue-700 scale-110 shadow-blue-900/20" : "bg-black/50 backdrop-blur-sm group-hover:bg-blue-900/30 group-hover:scale-110"}`}>
                              {currentBeat?.id === beat.id && isPlaying ? (
-                               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                               </svg>
+                               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
                              ) : (
-                               <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                 <path d="M8 5v14l11-7z" />
-                               </svg>
+                               <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                              )}
                            </div>
                          ) : (
                            <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                              <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center">
-                               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                               </svg>
+                               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                              </div>
                              <span className="text-gray-400 text-xs bg-black/60 px-2 py-0.5 rounded-full">No audio file</span>
                            </div>
                          )}
                        </div>
-
-                       {/* Genre badge */}
                        <div className="absolute top-3 left-3">
                          <span className="bg-black/60 backdrop-blur-sm text-xs text-gray-300 px-2.5 py-1 rounded-full border border-gray-700/50">{beat.genre}</span>
                        </div>
-
-                       {/* Status badge */}
                        <div className="absolute top-3 right-3">
-                         <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                           beat.status === "active" ? "bg-green-900/60 text-green-300 border border-green-700/30" :
-                           beat.status === "draft"  ? "bg-gray-800 text-gray-400 border border-gray-700" :
-                           "bg-amber-900/40 text-amber-300 border border-amber-700/30"
-                         }`}>{beat.status === "active" ? "Live" : beat.status === "draft" ? "Draft" : beat.status}</span>
+                         <span className={`text-xs px-2 py-1 rounded-full font-semibold ${beat.status === "active" ? "bg-green-900/60 text-green-300 border border-green-700/30" : beat.status === "draft" ? "bg-gray-800 text-gray-400 border border-gray-700" : "bg-amber-900/40 text-amber-300 border border-amber-700/30"}`}>{beat.status === "active" ? "Live" : beat.status === "draft" ? "Draft" : beat.status}</span>
                        </div>
-
-                       {/* Play count */}
                        <div className="absolute bottom-3 right-3 flex items-center gap-1">
                          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                          <span className="text-xs text-gray-400">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</span>
@@ -1582,7 +1565,7 @@ export default function ProducerDashboard() {
                       <div className="p-4">
                         <h3 className="text-white font-bold text-sm mb-1">{beat.title}</h3>
                         <p className="text-gray-500 text-xs mb-3">{beat.bpm} BPM · {beat.key}</p>
-                        <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="grid grid-cols-3 gap-2 text-center mb-3">
                           <div className="bg-gray-800 rounded-lg p-2">
                             <p className="text-white text-xs font-bold">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</p>
                             <p className="text-gray-500 text-xs">Plays</p>
@@ -1596,9 +1579,20 @@ export default function ProducerDashboard() {
                             <p className="text-gray-500 text-xs">Revenue</p>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                           <button onClick={() => openEditModal(beat)} className="flex-1 bg-blue-900/30 hover:bg-blue-900/30 text-blue-400 text-[10px] font-bold py-2 rounded-lg transition-colors border border-blue-700/30">Edit</button>
-                           <button onClick={() => deleteBeat(beat.id)} className="flex-1 bg-blue-900/30 hover:bg-blue-900/30 text-blue-400 text-[10px] font-bold py-2 rounded-lg transition-colors border border-red-800/30">Delete</button>
+                        <div className="flex flex-wrap gap-2">
+                          <button onClick={() => openEditModal(beat)} className="flex-1 bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 text-[10px] font-bold py-2 rounded-lg transition-colors border border-blue-700/30">Edit</button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(beatUrl).then(() => {
+                                setCopiedBeatId(beat.id);
+                                setTimeout(() => setCopiedBeatId(null), 2000);
+                              });
+                            }}
+                            className={`flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors border ${copiedBeatId === beat.id ? "bg-green-900/30 text-green-400 border-green-700/30" : "bg-gray-800 hover:bg-gray-700 text-gray-400 border-gray-700"}`}
+                          >
+                            {copiedBeatId === beat.id ? "Copied!" : "Share"}
+                          </button>
+                          <button onClick={() => deleteBeat(beat.id)} className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 text-[10px] font-bold py-2 rounded-lg transition-colors border border-red-800/30">Delete</button>
                           {beat.audioFile && (
                             <button
                               disabled={separatingStems[beat.id] || beat.stems?.some(s => s.status === "processing")}
@@ -1607,52 +1601,27 @@ export default function ProducerDashboard() {
                                 try {
                                   const res = await fetch(`/api/beats/${beat.id}/stems`, { method: "POST" });
                                   const d = await res.json().catch(() => ({}));
-                                  if (!res.ok || d.ok === false) {
-                                    alert(d.error || "Stem separation failed. Check that the worker is running.");
-                                  } else {
-                                    fetchMyBeats();
-                                  }
-                                } catch {
-                                  alert("Error");
-                                } finally {
-                                  setSeparatingStems(prev => ({ ...prev, [beat.id]: false }));
-                                }
+                                  if (!res.ok || d.ok === false) { alert(d.error || "Stem separation failed."); } else { fetchMyBeats(); }
+                                } catch { alert("Error"); } finally { setSeparatingStems(prev => ({ ...prev, [beat.id]: false })); }
                               }}
-                              className={`flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors border ${
-                                beat.stems?.some(s => s.status === "ready")
-                                  ? "bg-green-900/20 text-green-400 border-green-800/30"
-                                  : beat.stems?.some(s => s.status === "processing")
-                                  ? "bg-yellow-900/20 text-yellow-400 border-yellow-800/30 animate-pulse"
-                                  : "bg-indigo-900/20 text-indigo-300 border-indigo-800/30 hover:bg-indigo-900/40"
-                              }`}
+                              className={`flex-1 text-[10px] font-bold py-2 rounded-lg transition-colors border ${beat.stems?.some(s => s.status === "ready") ? "bg-green-900/20 text-green-400 border-green-800/30" : beat.stems?.some(s => s.status === "processing") ? "bg-yellow-900/20 text-yellow-400 border-yellow-800/30 animate-pulse" : "bg-indigo-900/20 text-indigo-300 border-indigo-800/30 hover:bg-indigo-900/40"}`}
                             >
-                              {beat.stems?.some(s => s.status === "ready") ? "Stems Ready" :
-                               beat.stems?.some(s => s.status === "processing") ? "Splitting..." :
-                               separatingStems[beat.id] ? "Starting..." : "✨ Split Stems"}
+                              {beat.stems?.some(s => s.status === "ready") ? "Stems Ready" : beat.stems?.some(s => s.status === "processing") ? "Splitting..." : separatingStems[beat.id] ? "Starting..." : "✨ Split Stems"}
                             </button>
                           )}
                         </div>
 
-                        {/* Stems download panel */}
                         {beat.stems?.some(s => s.status === "ready" && s.filePath) && (() => {
                           const safeName = beat.title.replace(/[/\\?%*:|"<>]/g, "-");
-                          const folderName = `${safeName} — ${beat.bpm}BPM ${beat.key}`;
-                          const stemLabels: Record<string, string> = { drums: "Drums", bass: "Bass", melody: "Melody", other: "Other" };
                           return (
                             <div className="mt-3 bg-gray-800/50 border border-gray-700/50 rounded-xl p-3">
-                              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-2">📁 {folderName}</p>
+                              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mb-2">📁 {safeName} — {beat.bpm}BPM {beat.key}</p>
                               <div className="grid grid-cols-2 gap-1.5">
                                 {beat.stems!.filter(s => s.status === "ready" && s.filePath).map(stem => {
                                   const label = stemLabels[stem.type] ?? stem.type;
                                   const filename = `${safeName} - ${label}.wav`;
-                                  const proxyUrl = `/api/audio?url=${encodeURIComponent(stem.filePath!)}&filename=${encodeURIComponent(filename)}`;
                                   return (
-                                    <a
-                                      key={stem.type}
-                                      href={proxyUrl}
-                                      download={filename}
-                                      className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-700/60 hover:bg-gray-700 rounded-lg text-gray-300 hover:text-white transition-colors text-[10px] font-medium"
-                                    >
+                                    <a key={stem.type} href={`/api/audio?url=${encodeURIComponent(stem.filePath!)}&filename=${encodeURIComponent(filename)}`} download={filename} className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-700/60 hover:bg-gray-700 rounded-lg text-gray-300 hover:text-white transition-colors text-[10px] font-medium">
                                       <svg className="w-3 h-3 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                       {label}.wav
                                     </a>
@@ -1665,7 +1634,90 @@ export default function ProducerDashboard() {
                         })()}
                       </div>
                   </div>
-                ))}
+                  );
+                })}
+              </div>
+            ) : (
+              /* ── LIST VIEW ── */
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                {/* Header row */}
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2.5 border-b border-gray-800 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                  <span>Beat</span>
+                  <span className="text-center">Plays</span>
+                  <span className="text-center">Sales</span>
+                  <span className="text-center">Revenue</span>
+                  <span className="pr-1">Actions</span>
+                </div>
+                {myBeatsData.map((beat, idx) => {
+                  const beatUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/beat/${beat.id}`;
+                  return (
+                  <div key={beat.id} className={`grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-800/50 transition-colors ${idx < myBeatsData.length - 1 ? "border-b border-gray-800/60" : ""}`}>
+                    {/* Beat info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Artwork / play */}
+                      <div
+                        className={`w-10 h-10 rounded-lg shrink-0 relative overflow-hidden bg-gradient-to-br ${genreGradients[beat.genre] || "from-blue-600 via-gray-900 to-black"} ${beat.audioFile ? "cursor-pointer" : ""}`}
+                        onClick={() => {
+                          if (!beat.audioFile) return;
+                          setCurrentBeat({ id: beat.id, title: beat.title, producer: user?.name ?? "You", producerId: user?.id ?? "", genre: beat.genre, bpm: beat.bpm, key: beat.key, mood: beat.mood ?? "", tags: [], priceBasic: beat.priceBasic, pricePremium: beat.pricePremium, priceExclusive: beat.priceExclusive, plays: beat.plays, featured: beat.featured, status: beat.status, artwork: beat.artwork ?? null, audioFile: beat.audioFile ?? null });
+                        }}
+                      >
+                        {beat.artwork && <img src={beat.artwork} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                        {beat.audioFile && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/50 transition-colors">
+                            {currentBeat?.id === beat.id && isPlaying ? (
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{beat.title}</p>
+                        <p className="text-gray-500 text-xs">{beat.genre} · {beat.bpm} BPM · {beat.key}</p>
+                      </div>
+                      <span className={`hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${beat.status === "active" ? "bg-green-900/60 text-green-300" : beat.status === "draft" ? "bg-gray-800 text-gray-400" : "bg-amber-900/40 text-amber-300"}`}>
+                        {beat.status === "active" ? "Live" : beat.status === "draft" ? "Draft" : beat.status}
+                      </span>
+                    </div>
+
+                    {/* Stats */}
+                    <p className="text-white text-sm font-bold text-center">{beat.plays >= 1000 ? `${(beat.plays/1000).toFixed(1)}k` : beat.plays}</p>
+                    <p className="text-white text-sm font-bold text-center">{beat.sales}</p>
+                    <p className="text-blue-400 text-sm font-bold text-center">${beat.revenue.toFixed(0)}</p>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={() => openEditModal(beat)} title="Edit" className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-900/20 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                      <button
+                        title="Copy share link"
+                        onClick={() => {
+                          navigator.clipboard.writeText(beatUrl).then(() => {
+                            setCopiedBeatId(beat.id);
+                            setTimeout(() => setCopiedBeatId(null), 2000);
+                          });
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors ${copiedBeatId === beat.id ? "text-green-400 bg-green-900/20" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+                      >
+                        {copiedBeatId === beat.id ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        )}
+                      </button>
+                      <a href={`/beat/${beat.id}`} target="_blank" rel="noopener noreferrer" title="View public page" className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      </a>
+                      <button onClick={() => deleteBeat(beat.id)} title="Delete" className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  );
+                })}
               </div>
             )}
           </div>

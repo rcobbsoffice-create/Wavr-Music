@@ -52,15 +52,13 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/95 backdrop-blur-md border-b border-gray-800/60">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Theme Selector */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-lg overflow-hidden bg-green-500 shadow-lg shadow-green-600/20 group-hover:shadow-green-500/40 transition-all shrink-0">
-                <Image src="/logo.png" alt="WAVR" width={36} height={36} className="w-full h-full object-cover" />
-              </div>
+              <Image src="/logo.png" alt="WAVR" width={36} height={36} className="w-9 h-9 object-contain" />
               <span className="text-xl font-black tracking-tighter text-white">
                 WAV<span className="text-blue-500">R</span>
               </span>

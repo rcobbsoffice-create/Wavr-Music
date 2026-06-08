@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/apiAuth";
 
@@ -62,12 +62,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_...') {
-    return NextResponse.json({ error: "Payments not configured. Add STRIPE_SECRET_KEY to enable checkout." }, { status: 503 });
-  }
-
   let session;
   try {
+    const stripe = getStripe();
     session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],

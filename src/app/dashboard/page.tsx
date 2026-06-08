@@ -192,13 +192,13 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         <DashboardHeader
           title={navItems.find(n => n.id === activeTab)?.label || "Dashboard"}
           onOpenSidebar={() => setSidebarOpen(true)}
         />
-        
-        <div className="p-4 sm:p-6 lg:p-8">
+
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {activeTab === "overview" && (
             <div className="space-y-8">
               {/* Overview Cards */}
@@ -498,7 +498,7 @@ export default function DashboardPage() {
           {activeTab === "settings" && (
             <ProfileSettings />
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

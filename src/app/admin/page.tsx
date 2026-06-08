@@ -245,7 +245,7 @@ export default function AdminDashboard() {
       />
 
       {/* Content Area */}
-      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         <DashboardHeader
           title={sidebarItems.find(i => i.tab === activeTab)?.label || "Admin Dashboard"}
           onOpenSidebar={() => setSidebarOpen(true)}

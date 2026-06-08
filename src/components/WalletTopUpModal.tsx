@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
+const pk = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").trim();
+const stripePromise = pk ? loadStripe(pk) : null;
 
 const PRESETS = [10, 25, 50, 100];
 
@@ -150,7 +151,9 @@ export default function WalletTopUpModal({ onClose, onSuccess, initialAmount }: 
               </button>
             </>
           ) : (
-            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night" } }}>
+            {!stripePromise ? (
+              <p className="text-red-400 text-sm text-center py-4">Payment configuration missing. Contact support.</p>
+            ) : <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night" } }}>
               <CheckoutForm
                 amount={finalAmount}
                 onSuccess={(bal) => { onSuccess(bal); onClose(); }}

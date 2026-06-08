@@ -62,10 +62,34 @@ function LyricsLab({ userId }: { userId?: string }) {
   const [linkingBeat, setLinkingBeat] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Beat search state
+  const [allBeats, setAllBeats] = useState<any[]>([]);
+  const [beatSearch, setBeatSearch] = useState("");
+  const [savingBeatId, setSavingBeatId] = useState<string | null>(null);
+
+  const savedBeatIds = new Set(savedBeats.map(b => b.id));
+
+  const filteredBeats = beatSearch.trim()
+    ? allBeats.filter(b =>
+        b.title.toLowerCase().includes(beatSearch.toLowerCase()) ||
+        (b.producer ?? b.producerName ?? "").toLowerCase().includes(beatSearch.toLowerCase())
+      )
+    : savedBeats;
+
   useEffect(() => {
     fetch("/api/lyrics").then(r => r.json()).then(d => { setNotes(Array.isArray(d) ? d : []); }).catch(() => {}).finally(() => setLoading(false));
     fetch("/api/beats/save").then(r => r.json()).then(d => { setSavedBeats(Array.isArray(d) ? d : []); }).catch(() => {});
+    fetch("/api/beats").then(r => r.json()).then(d => { setAllBeats(Array.isArray(d) ? d : []); }).catch(() => {});
   }, [userId]);
+
+  async function saveBeat(beatId: string) {
+    setSavingBeatId(beatId);
+    await fetch("/api/beats/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ beatId }) });
+    const res = await fetch("/api/beats/save");
+    const data = await res.json();
+    setSavedBeats(Array.isArray(data) ? data : []);
+    setSavingBeatId(null);
+  }
 
   async function createNote() {
     const res = await fetch("/api/lyrics", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Untitled", content: "" }) });
@@ -112,6 +136,12 @@ function LyricsLab({ userId }: { userId?: string }) {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           New Note
         </button>
+
+        {/* Saved beats count chip */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-gray-500 text-xs uppercase tracking-wider">Saved Beats</span>
+          <span className="bg-teal-600/20 text-teal-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-600/30">{savedBeats.length}</span>
+        </div>
         <div className="flex-1 overflow-y-auto space-y-2">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 bg-gray-800 rounded-xl animate-pulse" />)
@@ -178,17 +208,62 @@ function LyricsLab({ userId }: { userId?: string }) {
 
             {/* Beat picker */}
             {linkingBeat && (
-              <div className="p-3 border-b border-gray-800 bg-gray-800/50">
-                <p className="text-gray-400 text-xs mb-2">Pick a beat to link:</p>
-                <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto">
-                  {savedBeats.map(b => (
-                    <button key={b.id} onClick={() => { saveNote(activeNote.id, editTitle, editContent, b.id); setLinkingBeat(false); }}
-                      className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors">
-                      {b.artwork && <img src={b.artwork} alt="" className="w-5 h-5 rounded object-cover" />}
-                      <span className="text-white text-xs">{b.title}</span>
-                    </button>
-                  ))}
-                  {savedBeats.length === 0 && <p className="text-gray-500 text-xs">Save some beats first.</p>}
+              <div className="p-3 border-b border-gray-800 bg-gray-800/50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={beatSearch}
+                    onChange={e => setBeatSearch(e.target.value)}
+                    placeholder="Search all beats to save & link…"
+                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-teal-500 placeholder-gray-500"
+                  />
+                  {beatSearch && (
+                    <button onClick={() => setBeatSearch("")} className="text-gray-500 hover:text-white text-xs px-2">✕</button>
+                  )}
+                </div>
+                <p className="text-gray-500 text-[10px]">
+                  {beatSearch ? `Showing marketplace results — click Save & Link to add` : "Your saved beats — search above to find more"}
+                </p>
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                  {filteredBeats.length === 0 ? (
+                    <p className="text-gray-600 text-xs py-2 text-center">
+                      {beatSearch ? "No beats found" : "No saved beats yet — search above to find and save beats"}
+                    </p>
+                  ) : (
+                    filteredBeats.map((b: any) => {
+                      const isSaved = savedBeatIds.has(b.id);
+                      return (
+                        <div key={b.id} className="flex items-center gap-2 bg-gray-700/60 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition-colors">
+                          {b.artwork
+                            ? <img src={b.artwork} alt="" className="w-7 h-7 rounded object-cover shrink-0" />
+                            : <div className="w-7 h-7 rounded bg-gradient-to-br from-teal-600 to-blue-600 shrink-0" />
+                          }
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-medium truncate">{b.title}</p>
+                            <p className="text-gray-500 text-[10px]">{b.producer ?? b.producerName ?? ""}</p>
+                          </div>
+                          <button
+                            disabled={savingBeatId === b.id}
+                            onClick={async () => {
+                              if (!isSaved) await saveBeat(b.id);
+                              await saveNote(activeNote!.id, editTitle, editContent, b.id);
+                              setLinkingBeat(false);
+                              setBeatSearch("");
+                            }}
+                            className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors ${
+                              savingBeatId === b.id
+                                ? "opacity-50 cursor-wait bg-gray-600 text-gray-400"
+                                : isSaved
+                                ? "bg-teal-600/20 text-teal-400 border border-teal-600/30 hover:bg-teal-600/40"
+                                : "bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/40"
+                            }`}
+                          >
+                            {savingBeatId === b.id ? "Saving…" : isSaved ? "Link" : "Save & Link"}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}

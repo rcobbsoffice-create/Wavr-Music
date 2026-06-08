@@ -240,7 +240,7 @@ function LyricsLab({ userId }: { userId?: string }) {
                           }
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-xs font-medium truncate">{b.title}</p>
-                            <p className="text-gray-500 text-[10px]">{b.producer ?? b.producerName ?? ""}</p>
+                            <p className="text-gray-500 text-[10px]">{typeof b.producer === "object" ? b.producer?.name : (b.producer ?? b.producerName ?? "")}</p>
                           </div>
                           <button
                             disabled={savingBeatId === b.id}

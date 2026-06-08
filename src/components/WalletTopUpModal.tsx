@@ -35,6 +35,9 @@ function NewCardForm({ amount, onSuccess, onCancel }: {
     const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
+      confirmParams: {
+        return_url: `${window.location.origin}/purchase/success?type=wallet`,
+      },
     });
 
     if (stripeError) { setError(stripeError.message ?? "Payment failed"); setProcessing(false); return; }

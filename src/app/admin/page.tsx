@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
-type Tab = "overview" | "users" | "moderation" | "revenue" | "support" | "news" | "newsletter" | "branding";
+type Tab = "overview" | "users" | "moderation" | "revenue" | "support" | "news" | "newsletter" | "branding" | "payments";
 
 interface AdminStats {
   totalUsers: number;
@@ -48,6 +48,7 @@ const sidebarItems: { tab: Tab; label: string; emoji: string }[] = [
   { tab: "news",        label: "News Posts",         emoji: "📰" },
   { tab: "newsletter",  label: "Newsletter",         emoji: "✉️" },
   { tab: "branding",    label: "Branding & SEO",     emoji: "🎨" },
+  { tab: "payments",    label: "Payments & Coupons", emoji: "💳" },
 ];
 
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -648,6 +649,9 @@ export default function AdminDashboard() {
         {/* BRANDING */}
         {activeTab === "branding" && <BrandingManager />}
 
+        {/* PAYMENTS */}
+        {activeTab === "payments" && <PaymentsTab />}
+
       </main>
     </div>
   </div>
@@ -1096,6 +1100,225 @@ function NewsletterComposer() {
           )}
         </button>
       </form>
+    </div>
+  );
+}
+
+// ─── Payments & Coupons Tab ───────────────────────────────────────────────────
+interface PromoCode {
+  id: string;
+  code: string;
+  discount: number;
+  maxUses: number | null;
+  uses: number;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+function PaymentsTab() {
+  const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+  const stripeMode = stripeKey.startsWith("pk_live_") ? "live" : stripeKey.startsWith("pk_test_") ? "test" : "not configured";
+  const maskedKey = stripeKey ? `${stripeKey.slice(0, 8)}…${stripeKey.slice(-6)}` : "—";
+
+  const [coupons, setCoupons] = useState<PromoCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
+
+  const [form, setForm] = useState({ code: "", discount: "", maxUses: "", expiresAt: "" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/coupons")
+      .then(r => r.json())
+      .then(d => setCoupons(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setMsg("");
+    const res = await fetch("/api/admin/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: form.code,
+        discount: parseFloat(form.discount),
+        maxUses: form.maxUses || null,
+        expiresAt: form.expiresAt || null,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCoupons(p => [data, ...p]);
+      setForm({ code: "", discount: "", maxUses: "", expiresAt: "" });
+      setMsg("Coupon created!");
+      setTimeout(() => setMsg(""), 3000);
+    } else {
+      setMsg(data.error ?? "Failed to create coupon");
+    }
+    setSaving(false);
+  }
+
+  async function toggleActive(c: PromoCode) {
+    const res = await fetch(`/api/admin/coupons/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !c.active }),
+    });
+    if (res.ok) setCoupons(p => p.map(x => x.id === c.id ? { ...x, active: !x.active } : x));
+  }
+
+  async function deleteCoupon(id: string) {
+    if (!confirm("Delete this coupon code?")) return;
+    const res = await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+    if (res.ok) setCoupons(p => p.filter(x => x.id !== id));
+  }
+
+  return (
+    <div className="space-y-8 max-w-4xl">
+      <h1 className="text-2xl font-black text-white">Payments & Coupons</h1>
+
+      {/* Stripe Status */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-4">Stripe Integration</h2>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-semibold text-sm ${
+            stripeMode === "live" ? "bg-green-900/20 border-green-700/30 text-green-400"
+            : stripeMode === "test" ? "bg-yellow-900/20 border-yellow-700/30 text-yellow-400"
+            : "bg-gray-800 border-gray-700 text-gray-500"
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${stripeMode === "live" ? "bg-green-400" : stripeMode === "test" ? "bg-yellow-400" : "bg-gray-500"}`} />
+            {stripeMode === "live" ? "Live Mode" : stripeMode === "test" ? "Test Mode" : "Not Configured"}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 font-mono text-sm text-gray-300">
+            {maskedKey}
+          </div>
+          {stripeMode === "live" && (
+            <span className="text-green-400 text-xs font-semibold">Real payments active</span>
+          )}
+        </div>
+        <p className="text-gray-600 text-xs mt-4">
+          To rotate keys, update <span className="text-gray-400 font-mono">STRIPE_SECRET_KEY</span> and <span className="text-gray-400 font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</span> in Vercel → Settings → Environment Variables, then redeploy.
+        </p>
+      </div>
+
+      {/* Create Coupon */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-4">Create Coupon Code</h2>
+        {msg && <p className={`text-sm mb-3 ${msg.includes("created") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
+        <form onSubmit={handleCreate} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Code</label>
+            <input
+              value={form.code}
+              onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+              required placeholder="e.g. WAVR20"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:border-blue-600 uppercase"
+            />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Discount (%)</label>
+            <input
+              type="number" min="1" max="100" step="1"
+              value={form.discount}
+              onChange={e => setForm(p => ({ ...p, discount: e.target.value }))}
+              required placeholder="20"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600"
+            />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Max Uses <span className="text-gray-600">(blank = unlimited)</span></label>
+            <input
+              type="number" min="1"
+              value={form.maxUses}
+              onChange={e => setForm(p => ({ ...p, maxUses: e.target.value }))}
+              placeholder="∞"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600"
+            />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Expires</label>
+            <input
+              type="date"
+              value={form.expiresAt}
+              onChange={e => setForm(p => ({ ...p, expiresAt: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600"
+            />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-4">
+            <button type="submit" disabled={saving}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+              {saving ? "Creating…" : "+ Create Coupon"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Coupon List */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-gray-800">
+          <h2 className="text-white font-bold">Coupon Codes ({coupons.length})</h2>
+        </div>
+        {loading ? (
+          <div className="p-6 space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 bg-gray-800 rounded-xl animate-pulse" />)}</div>
+        ) : coupons.length === 0 ? (
+          <div className="py-14 text-center text-gray-600 text-sm">No coupon codes yet.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-800/50">
+              <tr className="text-gray-400 text-xs">
+                <th className="text-left px-5 py-3">Code</th>
+                <th className="text-left px-5 py-3">Discount</th>
+                <th className="text-left px-5 py-3">Uses</th>
+                <th className="text-left px-5 py-3">Expires</th>
+                <th className="text-left px-5 py-3">Status</th>
+                <th className="text-right px-5 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {coupons.map(c => (
+                <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
+                  <td className="px-5 py-3 font-mono font-bold text-white">{c.code}</td>
+                  <td className="px-5 py-3 text-green-400 font-bold">{c.discount}% off</td>
+                  <td className="px-5 py-3 text-gray-400">
+                    {c.uses}{c.maxUses ? ` / ${c.maxUses}` : " / ∞"}
+                  </td>
+                  <td className="px-5 py-3 text-gray-400 text-xs">
+                    {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "Never"}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2.5 py-1 rounded-full border ${
+                      c.active ? "bg-green-900/30 text-green-400 border-green-700/30" : "bg-gray-800 text-gray-500 border-gray-700"
+                    }`}>
+                      {c.active ? "Active" : "Disabled"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => toggleActive(c)}
+                        className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+                          c.active
+                            ? "text-gray-400 bg-gray-800 border-gray-700 hover:bg-gray-700"
+                            : "text-green-400 bg-green-900/20 border-green-700/30 hover:bg-green-900/40"
+                        }`}
+                      >
+                        {c.active ? "Disable" : "Enable"}
+                      </button>
+                      <button
+                        onClick={() => deleteCoupon(c.id)}
+                        className="text-xs text-red-400 bg-red-900/20 border border-red-800/30 px-2.5 py-1 rounded-lg hover:bg-red-900/40 transition-colors"
+                      >Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

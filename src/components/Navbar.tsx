@@ -41,7 +41,8 @@ export default function Navbar() {
   const isDashboard = pathname.startsWith("/admin") ||
                       pathname.startsWith("/producer") ||
                       pathname.startsWith("/dashboard") ||
-                      pathname.startsWith("/analytics");
+                      pathname.startsWith("/analytics") ||
+                      pathname.startsWith("/artist");
 
   if (isDashboard) return null;
 

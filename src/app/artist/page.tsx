@@ -105,7 +105,7 @@ function LyricsLab({ userId }: { userId?: string }) {
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-160px)]">
+    <div className="flex gap-6 flex-1 min-h-0">
       {/* Sidebar list */}
       <div className="w-64 shrink-0 flex flex-col gap-3">
         <button onClick={createNote} className="w-full py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
@@ -263,11 +263,13 @@ export default function ArtistPage() {
         roleBadge="Artist"
       />
 
-      <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         <DashboardHeader
           title={activeTab === "overview" ? "Artist Dashboard" : activeTab === "saved" ? "Saved Beats" : activeTab === "purchased" ? "My Purchases" : activeTab === "lyrics" ? "Lyrics Lab" : "Settings"}
           onOpenSidebar={() => setSidebarOpen(true)}
         />
+
+      <main className={`flex-1 overflow-y-auto p-6 lg:p-8 ${activeTab === "lyrics" ? "flex flex-col" : ""}`}>
 
         {/* Overview */}
         {activeTab === "overview" && (
@@ -392,6 +394,7 @@ export default function ArtistPage() {
           <ArtistSettings userName={user?.name} userEmail={user?.email} />
         )}
       </main>
+      </div>
     </div>
   );
 }

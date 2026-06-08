@@ -9,6 +9,37 @@ export default function AudioPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
+  const [liked, setLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
+
+  // Check if current beat is saved when it changes
+  useEffect(() => {
+    if (!currentBeat) return;
+    setLiked(false);
+    fetch("/api/beats/save")
+      .then(r => r.ok ? r.json() : [])
+      .then((beats: { id: string }[]) => {
+        if (Array.isArray(beats)) setLiked(beats.some(b => b.id === currentBeat.id));
+      })
+      .catch(() => {});
+  }, [currentBeat?.id]);
+
+  async function toggleLike() {
+    if (!currentBeat || liking) return;
+    setLiking(true);
+    try {
+      const res = await fetch("/api/beats/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId: currentBeat.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLiked(data.saved);
+      }
+    } catch {}
+    setLiking(false);
+  }
 
   // When the beat changes (or watermarked mode toggles), load and play via <audio>
   useEffect(() => {
@@ -93,10 +124,20 @@ export default function AudioPlayer() {
                 </svg>
               )}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-white text-sm font-semibold truncate">{currentBeat.title}</p>
               <p className="text-gray-400 text-xs truncate">{currentBeat.producer}</p>
             </div>
+            <button
+              onClick={toggleLike}
+              disabled={liking}
+              title={liked ? "Remove from saved beats" : "Save beat"}
+              className={`shrink-0 p-1.5 rounded-full transition-all ${liked ? "text-red-400 hover:text-red-300" : "text-gray-600 hover:text-red-400"} disabled:opacity-40`}
+            >
+              <svg className="w-4 h-4" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
           </div>
 
           {/* Controls */}

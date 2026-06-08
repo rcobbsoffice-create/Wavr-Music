@@ -63,7 +63,33 @@ export default function BeatDetailClient({
   const [shareOpen, setShareOpen] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{ code: string; discount: number; id: string } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
   const prices: Record<License, number> = { basic: priceBasic, premium: pricePremium, exclusive: priceExclusive };
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setValidatingCoupon(true);
+    setCouponError("");
+    setCouponApplied(null);
+    try {
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(couponInput.trim())}`);
+      const data = await res.json();
+      if (data.valid) {
+        setCouponApplied({ code: data.code, discount: data.discount, id: data.id });
+        setCouponInput("");
+      } else {
+        setCouponError(data.error ?? "Invalid coupon code");
+      }
+    } catch {
+      setCouponError("Could not validate code. Try again.");
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
 
   const handleBuy = async () => {
     setPurchaseError("");
@@ -72,7 +98,7 @@ export default function BeatDetailClient({
       const res = await fetch("/api/checkout/beat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ beatId, licenseType: selectedLicense }),
+        body: JSON.stringify({ beatId, licenseType: selectedLicense, couponCode: couponApplied?.code ?? null }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -213,19 +239,71 @@ export default function BeatDetailClient({
           ))}
         </div>
 
+        {/* Coupon code */}
+        {!isExclusiveSold && (
+          <div className="mb-4">
+            {couponApplied ? (
+              <div className="flex items-center justify-between bg-green-900/20 border border-green-700/30 rounded-xl px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span className="text-green-400 text-sm font-bold">{couponApplied.code}</span>
+                  <span className="text-green-300 text-xs">{couponApplied.discount}% off applied</span>
+                </div>
+                <button onClick={() => setCouponApplied(null)} className="text-green-600 hover:text-green-400 text-xs ml-2">Remove</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={couponInput}
+                  onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                  onKeyDown={e => e.key === "Enter" && applyCoupon()}
+                  placeholder="Coupon code"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:border-blue-600 placeholder-gray-600 uppercase"
+                />
+                <button
+                  onClick={applyCoupon}
+                  disabled={validatingCoupon || !couponInput.trim()}
+                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shrink-0"
+                >
+                  {validatingCoupon ? "…" : "Apply"}
+                </button>
+              </div>
+            )}
+            {couponError && <p className="text-red-400 text-xs mt-1.5 ml-1">{couponError}</p>}
+          </div>
+        )}
+
         {purchaseError && (
           <div className="mb-4 p-3 bg-red-900/20 border border-red-700/30 rounded-xl text-red-400 text-sm">
             {purchaseError}
           </div>
         )}
 
-        <button
-          onClick={handleBuy}
-          disabled={purchasing || isExclusiveSold}
-          className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors text-lg shadow-lg shadow-blue-600/20"
-        >
-          {purchasing ? "Redirecting…" : isExclusiveSold ? "Exclusive Sold" : `Buy ${licenseLabels[selectedLicense]} — $${prices[selectedLicense]}`}
-        </button>
+        {(() => {
+          const base = prices[selectedLicense];
+          const discounted = couponApplied ? Math.round(base * (1 - couponApplied.discount / 100) * 100) / 100 : null;
+          return (
+            <button
+              onClick={handleBuy}
+              disabled={purchasing || isExclusiveSold}
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors text-lg shadow-lg shadow-blue-600/20"
+            >
+              {purchasing ? "Redirecting…" : isExclusiveSold ? "Exclusive Sold" : (
+                <span className="flex items-center justify-center gap-2">
+                  <span>Buy {licenseLabels[selectedLicense]}</span>
+                  {discounted !== null ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="line-through text-blue-300 text-base opacity-70">${base}</span>
+                      <span>${discounted}</span>
+                    </span>
+                  ) : (
+                    <span>${base}</span>
+                  )}
+                </span>
+              )}
+            </button>
+          );
+        })()}
         <p className="text-center text-gray-600 text-xs mt-3">Secure checkout powered by Stripe</p>
       </div>
     </div>

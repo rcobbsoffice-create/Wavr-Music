@@ -86,6 +86,13 @@ export async function POST(req: NextRequest) {
           await Promise.all(payoutOps);
         }
 
+        if (meta.promoCodeId) {
+          await prisma.promoCode.update({
+            where: { id: meta.promoCodeId },
+            data: { uses: { increment: 1 } },
+          }).catch(() => {});
+        }
+
         console.log(`[Stripe webhook] License created: ${licenseType} for beat ${beatId}`);
       } catch (err) {
         console.error("[Stripe webhook] beat license DB error:", err);

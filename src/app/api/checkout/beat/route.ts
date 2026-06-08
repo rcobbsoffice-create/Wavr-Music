@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { beatId, licenseType } = await req.json();
+  const { beatId, licenseType, couponCode } = await req.json();
 
   if (!beatId || !LICENSE_LABELS[licenseType]) {
     return NextResponse.json({ error: "Invalid beatId or licenseType" }, { status: 400 });
@@ -40,8 +40,26 @@ export async function POST(req: NextRequest) {
     exclusive: beat.priceExclusive,
   };
 
-  const price = priceMap[licenseType];
+  let price = priceMap[licenseType];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  // Validate and apply coupon
+  let promoCodeId: string | null = null;
+  if (couponCode) {
+    const promo = await prisma.promoCode.findUnique({
+      where: { code: String(couponCode).toUpperCase().trim() },
+    });
+    const now = new Date();
+    if (
+      promo &&
+      promo.active &&
+      (!promo.expiresAt || promo.expiresAt > now) &&
+      (promo.maxUses === null || promo.uses < promo.maxUses)
+    ) {
+      price = Math.round(price * (1 - promo.discount / 100) * 100) / 100;
+      promoCodeId = promo.id;
+    }
+  }
 
   if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_...') {
     return NextResponse.json({ error: "Payments not configured. Add STRIPE_SECRET_KEY to enable checkout." }, { status: 503 });
@@ -70,6 +88,7 @@ export async function POST(req: NextRequest) {
         buyerId: user.id,
         licenseType,
         price: price.toString(),
+        ...(promoCodeId ? { promoCodeId } : {}),
       },
       success_url: `${appUrl}/purchase/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/marketplace`,

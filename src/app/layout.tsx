@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   title: "WAVR — Sell Beats, Own Your Sound",
   description:
     "The premier beat marketplace for independent producers. Sell instrumentals with flexible licensing, drop merch, and track every dollar.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/logo-192.png",
+  },
+  openGraph: {
+    images: [{ url: "/logo-192.png" }],
+  },
 };
 
 export default function RootLayout({

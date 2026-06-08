@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -57,10 +58,8 @@ export default function Navbar() {
           {/* Logo & Theme Selector */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover:shadow-blue-500/50 transition-all">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                </svg>
+              <div className="w-9 h-9 rounded-lg overflow-hidden bg-white shadow-lg shadow-blue-600/20 group-hover:shadow-blue-500/40 transition-all shrink-0">
+                <Image src="/logo.png" alt="WAVR" width={36} height={36} className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-black tracking-tighter text-white">
                 WAV<span className="text-blue-500">R</span>

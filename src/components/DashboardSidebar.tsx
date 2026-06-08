@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useRef, useState } from "react";
@@ -75,11 +76,7 @@ export default function DashboardSidebar({
         {/* Header */}
         <div className="p-4 border-b border-gray-800 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-md">
-              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-              </svg>
-            </div>
+            <Image src="/logo.png" alt="WAVR" width={28} height={28} className="w-7 h-7 object-contain" />
             <span className="text-lg font-black tracking-tighter text-white">
               WAV<span className="text-blue-500">R</span>
             </span>

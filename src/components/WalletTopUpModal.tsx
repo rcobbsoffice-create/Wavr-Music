@@ -150,10 +150,10 @@ export default function WalletTopUpModal({ onClose, onSuccess, initialAmount }: 
                 {loading ? "Loading…" : "Continue to Payment"}
               </button>
             </>
+          ) : !stripePromise ? (
+            <p className="text-red-400 text-sm text-center py-4">Payment not configured. Contact support.</p>
           ) : (
-            {!stripePromise ? (
-              <p className="text-red-400 text-sm text-center py-4">Payment configuration missing. Contact support.</p>
-            ) : <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night" } }}>
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night" } }}>
               <CheckoutForm
                 amount={finalAmount}
                 onSuccess={(bal) => { onSuccess(bal); onClose(); }}

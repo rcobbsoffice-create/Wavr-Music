@@ -7,7 +7,7 @@ import { usePlayer } from "@/components/PlayerContext";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 
-type Tab = "overview" | "saved" | "purchased" | "lyrics" | "settings";
+type Tab = "overview" | "saved" | "purchased" | "lyrics" | "profile" | "merch" | "settings";
 
 interface SavedBeat {
   id: string;
@@ -47,6 +47,8 @@ const sidebarLinks = [
   { label: "Saved Beats",tab: "saved",      icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
   { label: "Purchased",  tab: "purchased",  icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { label: "Lyrics Lab", tab: "lyrics",     icon: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" },
+  { label: "My Profile", tab: "profile",    icon: "M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { label: "My Merch",   tab: "merch",      icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" },
   { label: "Settings",   tab: "settings",   icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
 ];
 
@@ -500,6 +502,14 @@ export default function ArtistPage() {
         {/* Lyrics Lab */}
         {activeTab === "lyrics" && <LyricsLab userId={user?.id} />}
 
+        {/* Profile */}
+        {activeTab === "profile" && (
+          <ArtistProfile userName={user?.name} userEmail={user?.email} />
+        )}
+
+        {/* Merch */}
+        {activeTab === "merch" && <ArtistMerch />}
+
         {/* Settings */}
         {activeTab === "settings" && (
           <ArtistSettings userName={user?.name} userEmail={user?.email} />
@@ -510,6 +520,277 @@ export default function ArtistPage() {
   );
 }
 
+// ─── Artist Profile ───────────────────────────────────────────────────────────
+const SOCIAL_FIELDS = [
+  { key: "twitter",    label: "Twitter / X",  placeholder: "https://x.com/yourhandle" },
+  { key: "instagram",  label: "Instagram",    placeholder: "https://instagram.com/yourhandle" },
+  { key: "youtube",    label: "YouTube",      placeholder: "https://youtube.com/@yourchannel" },
+  { key: "soundcloud", label: "SoundCloud",   placeholder: "https://soundcloud.com/yourprofile" },
+  { key: "spotify",    label: "Spotify",      placeholder: "https://open.spotify.com/artist/..." },
+  { key: "website",    label: "Website",      placeholder: "https://yourwebsite.com" },
+] as const;
+
+type SocialKey = typeof SOCIAL_FIELDS[number]["key"];
+
+function ArtistProfile({ userName, userEmail }: { userName?: string; userEmail?: string }) {
+  const [name, setName]       = useState(userName ?? "");
+  const [bio, setBio]         = useState("");
+  const [avatarFile, setAvatarFile]   = useState<File | null>(null);
+  const [coverFile, setCoverFile]     = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview]   = useState<string | null>(null);
+  const [social, setSocial]   = useState<Record<SocialKey, string>>({
+    twitter: "", instagram: "", youtube: "", soundcloud: "", spotify: "", website: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg]       = useState("");
+
+  useEffect(() => {
+    fetch("/api/profile").then(r => r.json()).then(d => {
+      setName(d.name ?? "");
+      setBio(d.bio ?? "");
+      if (d.avatar) setAvatarPreview(d.avatar);
+      if (d.coverImage) setCoverPreview(d.coverImage);
+      if (d.socialLinks) {
+        try { setSocial(prev => ({ ...prev, ...JSON.parse(d.socialLinks) })); } catch {}
+      }
+    }).catch(() => {});
+  }, []);
+
+  function pickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setAvatarFile(f);
+    if (f) setAvatarPreview(URL.createObjectURL(f));
+  }
+  function pickCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setCoverFile(f);
+    if (f) setCoverPreview(URL.createObjectURL(f));
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("name", name);
+      fd.append("bio", bio);
+      fd.append("socialLinks", JSON.stringify(social));
+      if (avatarFile) fd.append("avatar", avatarFile);
+      if (coverFile)  fd.append("coverImage", coverFile);
+      const res = await fetch("/api/profile", { method: "PATCH", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setMsg(data.error ?? "Failed to save"); return; }
+      setMsg("Profile saved!");
+      setAvatarFile(null); setCoverFile(null);
+    } catch { setMsg("Network error."); }
+    finally { setSaving(false); }
+  }
+
+  const inputCls = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600";
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <h1 className="text-2xl font-black text-white">My Profile</h1>
+      {msg && <p className={`text-sm ${msg.includes("saved") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
+
+      <form onSubmit={handleSave} className="space-y-6">
+        {/* Cover + Avatar */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="h-32 bg-gradient-to-r from-blue-900 to-teal-900 relative overflow-hidden">
+            {coverPreview && <img src={coverPreview} alt="cover" className="w-full h-full object-cover" />}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/50 cursor-pointer transition-colors">
+              <span className="text-white text-xs font-semibold bg-black/50 px-3 py-1.5 rounded-lg">Change Cover</span>
+              <input type="file" accept="image/*" onChange={pickCover} className="sr-only" />
+            </label>
+          </div>
+          <div className="px-5 pb-5 -mt-8 flex items-end gap-4">
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-full border-4 border-gray-900 overflow-hidden bg-gray-700">
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-2xl font-black text-gray-500">{name.charAt(0)}</div>
+                }
+              </div>
+              <label className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 cursor-pointer transition-opacity">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0" /></svg>
+                <input type="file" accept="image/*" onChange={pickAvatar} className="sr-only" />
+              </label>
+            </div>
+            <div className="flex-1 pb-1">
+              <p className="text-white font-bold">{name || "Your Name"}</p>
+              <p className="text-gray-500 text-xs">{userEmail}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Basic info */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+          <h2 className="text-white font-bold">Basic Info</h2>
+          <div>
+            <label className="block text-gray-400 text-xs font-medium mb-1.5">Artist Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} required className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-gray-400 text-xs font-medium mb-1.5">Bio <span className="text-gray-600">({bio.length}/500)</span></label>
+            <textarea value={bio} onChange={e => setBio(e.target.value)} maxLength={500} rows={4}
+              placeholder="Tell fans about yourself…"
+              className={`${inputCls} resize-none`} />
+          </div>
+        </div>
+
+        {/* Social links */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
+          <h2 className="text-white font-bold">Social Links</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="block text-gray-400 text-xs font-medium mb-1">{label}</label>
+                <input
+                  value={social[key]}
+                  onChange={e => setSocial(p => ({ ...p, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button type="submit" disabled={saving}
+          className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-colors">
+          {saving ? "Saving…" : "Save Profile"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Artist Merch ─────────────────────────────────────────────────────────────
+const MERCH_CATEGORIES = ["T-Shirts","Hoodies","Hats","Phone Cases","Tote Bags","Posters","Mugs"];
+
+function ArtistMerch() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [adding, setAdding]     = useState(false);
+  const [msg, setMsg]           = useState("");
+
+  const [name, setName]         = useState("");
+  const [category, setCategory] = useState("T-Shirts");
+  const [price, setPrice]       = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const fetchProducts = () => {
+    setLoading(true);
+    fetch("/api/merch/mine")
+      .then(r => r.json())
+      .then(d => setProducts(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { fetchProducts(); }, []);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !price || !imageFile) { setMsg("Name, price and image are required."); return; }
+    setAdding(true); setMsg("");
+    const fd = new FormData();
+    fd.append("name", name);
+    fd.append("category", category);
+    fd.append("price", price);
+    fd.append("image", imageFile);
+    try {
+      const res = await fetch("/api/merch", { method: "POST", body: fd });
+      if (!res.ok) { const d = await res.json(); setMsg(d.error ?? "Failed"); return; }
+      setMsg("Product added!");
+      setName(""); setPrice(""); setImageFile(null); setShowForm(false);
+      fetchProducts();
+    } catch { setMsg("Network error."); }
+    finally { setAdding(false); }
+  }
+
+  const inputCls = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-black text-white">My Merch</h1>
+        <button onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+          {showForm ? "Cancel" : "+ Add Product"}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleAdd} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
+          <h2 className="text-white font-bold">New Merch Product</h2>
+          {msg && <p className={`text-sm ${msg.includes("added") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-400 text-xs font-medium mb-1.5">Product Name</label>
+              <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Logo Hoodie" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-xs font-medium mb-1.5">Category</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>
+                {MERCH_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-400 text-xs font-medium mb-1.5">Price ($)</label>
+              <input value={price} onChange={e => setPrice(e.target.value)} type="number" step="0.01" min="1" required placeholder="29.99" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-xs font-medium mb-1.5">Product Image</label>
+              <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] ?? null)} required
+                className="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-900/30 file:text-blue-400 hover:file:bg-blue-900/40" />
+            </div>
+          </div>
+          <button type="submit" disabled={adding}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-colors">
+            {adding ? "Adding…" : "Add Product"}
+          </button>
+        </form>
+      )}
+
+      {!showForm && msg && <p className="text-green-400 text-sm">{msg}</p>}
+
+      {loading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1,2,3].map(i => <div key={i} className="h-48 bg-gray-900 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-20 bg-gray-900 border border-gray-800 border-dashed rounded-2xl">
+          <p className="text-gray-400 font-semibold mb-1">No merch yet</p>
+          <p className="text-gray-600 text-sm">Add your first product to start selling</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((p: any) => (
+            <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/40 transition-all">
+              <div className="h-40 bg-gray-800 overflow-hidden">
+                {p.images?.[0]
+                  ? <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-gray-600">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                    </div>
+                }
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-bold text-sm truncate">{p.name}</h3>
+                <p className="text-gray-500 text-xs mt-0.5">{p.category}</p>
+                <p className="text-blue-400 font-bold mt-2">${Number(p.price).toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Artist Settings ──────────────────────────────────────────────────────────
 function ArtistSettings({ userName, userEmail }: { userName?: string; userEmail?: string }) {
   const [name, setName] = useState(userName ?? "");
   const [bio, setBio] = useState("");
@@ -534,11 +815,11 @@ function ArtistSettings({ userName, userEmail }: { userName?: string; userEmail?
 
   return (
     <div className="max-w-lg space-y-6">
-      <h2 className="text-xl font-bold text-white">Artist Settings</h2>
+      <h2 className="text-xl font-bold text-white">Account Settings</h2>
       <form onSubmit={handleSave} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
         {msg && <p className={`text-sm ${msg === "Saved!" ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
         <div>
-          <label className="block text-gray-400 text-sm mb-1.5">Artist Name</label>
+          <label className="block text-gray-400 text-sm mb-1.5">Display Name</label>
           <input value={name} onChange={e => setName(e.target.value)} required className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500" />
         </div>
         <div>

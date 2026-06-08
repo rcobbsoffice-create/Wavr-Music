@@ -5,7 +5,7 @@ import { getAuthUser } from "@/lib/apiAuth";
 // GET /api/merch/mine — list merch uploaded by the current producer
 export async function GET() {
   const user = await getAuthUser();
-  if (!user || user.role !== "producer") {
+  if (!user || (user.role !== "producer" && user.role !== "artist" && user.role !== "admin")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 // POST /api/merch — create a new merch product
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
-  if (!user || (user.role !== "admin" && user.role !== "producer")) {
+  if (!user || (user.role !== "admin" && user.role !== "producer" && user.role !== "artist")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

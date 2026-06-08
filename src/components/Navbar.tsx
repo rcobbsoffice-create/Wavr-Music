@@ -58,7 +58,7 @@ export default function Navbar() {
           {/* Logo & Theme Selector */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-lg overflow-hidden bg-white shadow-lg shadow-blue-600/20 group-hover:shadow-blue-500/40 transition-all shrink-0">
+              <div className="w-9 h-9 rounded-lg overflow-hidden bg-green-500 shadow-lg shadow-green-600/20 group-hover:shadow-green-500/40 transition-all shrink-0">
                 <Image src="/logo.png" alt="WAVR" width={36} height={36} className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-black tracking-tighter text-white">

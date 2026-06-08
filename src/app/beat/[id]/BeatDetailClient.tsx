@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import WatermarkedPlayer from "@/components/WatermarkedPlayer";
+import WalletTopUpModal from "@/components/WalletTopUpModal";
 import { Beat } from "@/lib/mockData";
 
 interface Props {
@@ -59,6 +60,7 @@ export default function BeatDetailClient({
   const [selectedLicense, setSelectedLicense] = useState<License>("premium");
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState("");
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
@@ -68,7 +70,64 @@ export default function BeatDetailClient({
   const [couponError, setCouponError] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
+  // Wallet
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [showTopUp, setShowTopUp] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/wallet")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setWalletBalance(d.balance); })
+      .catch(() => {});
+  }, []);
+
   const prices: Record<License, number> = { basic: priceBasic, premium: pricePremium, exclusive: priceExclusive };
+
+  const effectivePrice = (() => {
+    const base = prices[selectedLicense];
+    return couponApplied ? Math.round(base * (1 - couponApplied.discount / 100) * 100) / 100 : base;
+  })();
+  const canPayWithWallet = walletBalance !== null && walletBalance >= effectivePrice;
+  const shortfall = walletBalance !== null ? Math.max(0, effectivePrice - walletBalance) : effectivePrice;
+
+  const handleWalletBuy = async () => {
+    setPurchaseError(""); setPurchasing(true);
+    try {
+      const res = await fetch("/api/wallet/use", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId, licenseType: selectedLicense, couponCode: couponApplied?.code ?? null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402) {
+          setWalletBalance(data.balance ?? walletBalance);
+          setPurchaseError(`Insufficient balance. You need $${data.required?.toFixed(2)} but have $${data.balance?.toFixed(2)}.`);
+        } else {
+          setPurchaseError(data.error ?? "Purchase failed");
+        }
+        return;
+      }
+      setWalletBalance(prev => prev !== null ? Math.max(0, prev - effectivePrice) : null);
+      setPurchaseSuccess(true);
+    } catch { setPurchaseError("Something went wrong. Try again."); }
+    finally { setPurchasing(false); }
+  };
+
+  const handleCardBuy = async () => {
+    setPurchaseError(""); setPurchasing(true);
+    try {
+      const res = await fetch("/api/checkout/beat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId, licenseType: selectedLicense, couponCode: couponApplied?.code ?? null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { if (res.status === 401) { router.push("/login"); return; } setPurchaseError(data.error ?? "Checkout failed"); return; }
+      window.location.href = data.url;
+    } catch { setPurchaseError("Something went wrong. Try again."); }
+    finally { setPurchasing(false); }
+  };
 
   const applyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -91,28 +150,6 @@ export default function BeatDetailClient({
     }
   };
 
-  const handleBuy = async () => {
-    setPurchaseError("");
-    setPurchasing(true);
-    try {
-      const res = await fetch("/api/checkout/beat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ beatId, licenseType: selectedLicense, couponCode: couponApplied?.code ?? null }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 401) { router.push("/login"); return; }
-        setPurchaseError(data.error ?? "Checkout failed");
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      setPurchaseError("Something went wrong. Try again.");
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const text = `Check out "${title}" by ${producer} on WAVR`;
 
@@ -222,90 +259,120 @@ export default function BeatDetailClient({
         <h3 className="text-white font-bold mb-4">Get This Beat</h3>
         <div className="flex gap-2 mb-4">
           {(["basic", "premium", "exclusive"] as License[]).map((l) => (
-            <button
-              key={l}
-              onClick={() => setSelectedLicense(l)}
+            <button key={l} onClick={() => setSelectedLicense(l)}
               disabled={isExclusiveSold && l === "exclusive"}
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
                 selectedLicense === l
-                  ? l === "exclusive"
-                    ? "bg-amber-500/20 border-amber-500 text-amber-400"
-                    : "bg-blue-600/20 border-blue-500 text-blue-400"
+                  ? l === "exclusive" ? "bg-amber-500/20 border-amber-500 text-amber-400" : "bg-blue-600/20 border-blue-500 text-blue-400"
                   : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
-              } ${isExclusiveSold && l === "exclusive" ? "opacity-40 cursor-not-allowed" : ""}`}
-            >
+              } ${isExclusiveSold && l === "exclusive" ? "opacity-40 cursor-not-allowed" : ""}`}>
               {licenseLabels[l]}
             </button>
           ))}
         </div>
 
-        {/* Coupon code */}
+        {/* Coupon */}
         {!isExclusiveSold && (
           <div className="mb-4">
             {couponApplied ? (
               <div className="flex items-center justify-between bg-green-900/20 border border-green-700/30 rounded-xl px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
                   <span className="text-green-400 text-sm font-bold">{couponApplied.code}</span>
-                  <span className="text-green-300 text-xs">{couponApplied.discount}% off applied</span>
+                  <span className="text-green-300 text-xs">{couponApplied.discount}% off</span>
                 </div>
-                <button onClick={() => setCouponApplied(null)} className="text-green-600 hover:text-green-400 text-xs ml-2">Remove</button>
+                <button onClick={() => setCouponApplied(null)} className="text-green-600 hover:text-green-400 text-xs">Remove</button>
               </div>
             ) : (
               <div className="flex gap-2">
-                <input
-                  value={couponInput}
-                  onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
-                  onKeyDown={e => e.key === "Enter" && applyCoupon()}
-                  placeholder="Coupon code"
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:border-blue-600 placeholder-gray-600 uppercase"
-                />
-                <button
-                  onClick={applyCoupon}
-                  disabled={validatingCoupon || !couponInput.trim()}
-                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shrink-0"
-                >
+                <input value={couponInput} onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                  onKeyDown={e => e.key === "Enter" && applyCoupon()} placeholder="Coupon code"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono focus:outline-none focus:border-blue-600 placeholder-gray-600 uppercase"/>
+                <button onClick={applyCoupon} disabled={validatingCoupon || !couponInput.trim()}
+                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shrink-0">
                   {validatingCoupon ? "…" : "Apply"}
                 </button>
               </div>
             )}
-            {couponError && <p className="text-red-400 text-xs mt-1.5 ml-1">{couponError}</p>}
+            {couponError && <p className="text-red-400 text-xs mt-1.5">{couponError}</p>}
+          </div>
+        )}
+
+        {/* Wallet balance bar */}
+        {walletBalance !== null && !isExclusiveSold && (
+          <div className="mb-4 flex items-center justify-between bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+              <span className="text-gray-400 text-xs">Wallet balance</span>
+              <span className={`text-sm font-bold ${canPayWithWallet ? "text-green-400" : "text-white"}`}>
+                ${walletBalance.toFixed(2)}
+              </span>
+            </div>
+            <button onClick={() => setShowTopUp(true)}
+              className="text-xs text-blue-400 hover:text-blue-300 border border-blue-700/40 px-2.5 py-1 rounded-lg transition-colors">
+              + Add Funds
+            </button>
           </div>
         )}
 
         {purchaseError && (
-          <div className="mb-4 p-3 bg-red-900/20 border border-red-700/30 rounded-xl text-red-400 text-sm">
-            {purchaseError}
-          </div>
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-700/30 rounded-xl text-red-400 text-sm">{purchaseError}</div>
         )}
 
-        {(() => {
-          const base = prices[selectedLicense];
-          const discounted = couponApplied ? Math.round(base * (1 - couponApplied.discount / 100) * 100) / 100 : null;
-          return (
-            <button
-              onClick={handleBuy}
-              disabled={purchasing || isExclusiveSold}
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors text-lg shadow-lg shadow-blue-600/20"
-            >
-              {purchasing ? "Redirecting…" : isExclusiveSold ? "Exclusive Sold" : (
-                <span className="flex items-center justify-center gap-2">
-                  <span>Buy {licenseLabels[selectedLicense]}</span>
-                  {discounted !== null ? (
-                    <span className="flex items-center gap-1.5">
-                      <span className="line-through text-blue-300 text-base opacity-70">${base}</span>
-                      <span>${discounted}</span>
-                    </span>
-                  ) : (
-                    <span>${base}</span>
-                  )}
-                </span>
-              )}
+        {purchaseSuccess ? (
+          <div className="p-4 bg-green-900/20 border border-green-700/30 rounded-xl text-center">
+            <svg className="w-8 h-8 text-green-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p className="text-green-400 font-bold">Purchase complete!</p>
+            <p className="text-gray-400 text-sm mt-1">Check your dashboard to download.</p>
+          </div>
+        ) : isExclusiveSold ? (
+          <button disabled className="w-full py-3.5 bg-gray-700 text-gray-500 font-bold rounded-xl cursor-not-allowed">Exclusive Sold</button>
+        ) : (
+          <div className="space-y-2">
+            {/* Wallet pay button */}
+            <button onClick={handleWalletBuy} disabled={purchasing || !canPayWithWallet}
+              className={`w-full py-3.5 font-bold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 ${
+                canPayWithWallet
+                  ? "bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20"
+                  : "bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700"
+              }`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+              {purchasing ? "Processing…" : canPayWithWallet
+                ? `Pay from Wallet — $${effectivePrice.toFixed(2)}`
+                : `Need $${shortfall.toFixed(2)} more in wallet`}
             </button>
-          );
-        })()}
-        <p className="text-center text-gray-600 text-xs mt-3">Secure checkout powered by Stripe</p>
+
+            {/* Add funds shortcut if insufficient */}
+            {!canPayWithWallet && walletBalance !== null && (
+              <button onClick={() => setShowTopUp(true)}
+                className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-semibold rounded-xl transition-colors text-sm border border-blue-700/30">
+                Add ${shortfall.toFixed(2)} to Wallet & Buy
+              </button>
+            )}
+
+            {/* Card fallback */}
+            <button onClick={handleCardBuy} disabled={purchasing}
+              className="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 font-semibold rounded-xl transition-colors text-sm border border-gray-700">
+              {purchasing ? "…" : `Pay by Card — $${effectivePrice.toFixed(2)}`}
+            </button>
+          </div>
+        )}
+        <p className="text-center text-gray-600 text-xs mt-3">All payments secured by Stripe</p>
       </div>
+
+      {showTopUp && (
+        <WalletTopUpModal
+          initialAmount={shortfall > 0 ? Math.ceil(shortfall) : 25}
+          onClose={() => setShowTopUp(false)}
+          onSuccess={(bal) => { setWalletBalance(bal); setShowTopUp(false); }}
+        />
+      )}
     </div>
   );
 }

@@ -25,6 +25,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
+  // Wallet top-up via Payment Intent
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    if (intent.metadata?.type === "wallet_topup") {
+      const { userId, amount } = intent.metadata;
+      await prisma.user.update({
+        where: { id: userId },
+        data: { balance: { increment: parseFloat(amount) } },
+      }).catch((err) => console.error("[Webhook] wallet top-up DB error:", err));
+    }
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const meta = session.metadata ?? {};

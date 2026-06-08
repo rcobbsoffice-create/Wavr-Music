@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import WalletTopUpModal from "@/components/WalletTopUpModal";
 
 interface SidebarItem {
   id: string;
@@ -34,6 +35,15 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [showTopUp, setShowTopUp] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/wallet")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setWalletBalance(d.balance); })
+      .catch(() => {});
+  }, []);
 
   // Keep a ref so the pathname effect doesn't re-run when onClose identity changes
   const onCloseRef = useRef(onClose);
@@ -103,6 +113,23 @@ export default function DashboardSidebar({
             </div>
           </div>
         </div>
+
+        {/* Wallet */}
+        {walletBalance !== null && (
+          <div className="px-4 py-2.5 border-b border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+              <span className="text-white text-xs font-bold">${walletBalance.toFixed(2)}</span>
+              <span className="text-gray-600 text-[10px]">wallet</span>
+            </div>
+            <button onClick={() => setShowTopUp(true)}
+              className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold border border-blue-700/40 px-2 py-0.5 rounded-md transition-colors">
+              + Add
+            </button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -178,6 +205,12 @@ export default function DashboardSidebar({
           </button>
         </div>
       </aside>
+      {showTopUp && (
+        <WalletTopUpModal
+          onClose={() => setShowTopUp(false)}
+          onSuccess={(bal) => { setWalletBalance(bal); setShowTopUp(false); }}
+        />
+      )}
     </>
   );
 }

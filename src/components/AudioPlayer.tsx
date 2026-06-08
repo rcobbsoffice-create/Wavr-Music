@@ -41,16 +41,19 @@ export default function AudioPlayer() {
     setLiking(false);
   }
 
-  // When the beat changes (or watermarked mode toggles), load and play via <audio>
+  // Load a new source only when the beat itself changes
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     setCurrentTime(0);
     setDuration(0);
-    // Yield control entirely to WatermarkedPlayer when it's active
-    if (!currentBeat?.audioFile || watermarkedActive) {
+    if (!currentBeat?.audioFile) {
       audio.pause();
       audio.src = "";
+      return;
+    }
+    if (watermarkedActive) {
+      // WatermarkedPlayer owns playback — don't touch the src yet
       return;
     }
     const audioSrc = currentBeat.audioFile.includes("huggingface.co")
@@ -58,13 +61,31 @@ export default function AudioPlayer() {
       : currentBeat.audioFile;
     audio.src = audioSrc;
     audio.load();
-    if (isPlaying) {
-      audio.play().catch(() => {});
+    if (isPlaying) audio.play().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBeat?.id]);
+
+  // When WatermarkedPlayer hands back control, resume without reloading
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentBeat?.audioFile) return;
+    if (watermarkedActive) {
+      audio.pause();
+    } else {
+      // Restore src if it was cleared, then resume
+      const audioSrc = currentBeat.audioFile.includes("huggingface.co")
+        ? `/api/audio?url=${encodeURIComponent(currentBeat.audioFile)}`
+        : currentBeat.audioFile;
+      if (!audio.src || audio.src === window.location.href) {
+        audio.src = audioSrc;
+        audio.load();
+      }
+      if (isPlaying) audio.play().catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBeat?.id, watermarkedActive]);
+  }, [watermarkedActive]);
 
-  // Sync play/pause when toggled without a beat change
+  // Sync play/pause when toggled without a beat or watermark change
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentBeat?.audioFile || watermarkedActive) return;

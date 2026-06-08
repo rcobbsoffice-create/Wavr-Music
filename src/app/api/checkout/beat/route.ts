@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
   };
 
   let price = priceMap[licenseType];
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
   // Validate and apply coupon
   let promoCodeId: string | null = null;

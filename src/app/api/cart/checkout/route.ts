@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: lineItems,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/purchase/success?type=merch`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/merch`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")}/purchase/success?type=merch`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")}/merch`,
       customer_email: user.email,
       metadata,
     });

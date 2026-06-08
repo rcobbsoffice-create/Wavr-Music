@@ -67,6 +67,8 @@ function LyricsLab({ userId }: { userId?: string }) {
   const [beatSearch, setBeatSearch] = useState("");
   const [savingBeatId, setSavingBeatId] = useState<string | null>(null);
 
+  const { currentBeat, isPlaying, setCurrentBeat } = usePlayer();
+
   const savedBeatIds = new Set(savedBeats.map(b => b.id));
 
   const filteredBeats = beatSearch.trim()
@@ -185,14 +187,34 @@ function LyricsLab({ userId }: { userId?: string }) {
                 placeholder="Note title…"
               />
               {/* Linked beat */}
-              {activeNote.beat ? (
-                <div className="flex items-center gap-2 bg-teal-600/10 border border-teal-600/30 rounded-lg px-3 py-1.5">
-                  {activeNote.beat.artwork && <img src={activeNote.beat.artwork} alt="" className="w-5 h-5 rounded object-cover" />}
-                  <span className="text-teal-400 text-xs font-medium truncate max-w-[120px]">{activeNote.beat.title}</span>
-                  <button onClick={() => saveNote(activeNote.id, editTitle, editContent, null)} className="text-gray-500 hover:text-red-400 ml-1">
+              {activeNote.beat ? (() => {
+                const fullBeat = allBeats.find(b => b.id === activeNote.beat!.id);
+                const isThisBeatPlaying = currentBeat?.id === activeNote.beat.id && isPlaying;
+                return (
+                <div className="flex items-center gap-2 bg-teal-600/10 border border-teal-600/30 rounded-lg px-2 py-1.5">
+                  {activeNote.beat.artwork
+                    ? <img src={activeNote.beat.artwork} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                    : <div className="w-5 h-5 rounded bg-gradient-to-br from-teal-600 to-blue-600 shrink-0" />}
+                  <span className="text-teal-400 text-xs font-medium truncate max-w-[100px]">{activeNote.beat.title}</span>
+                  {fullBeat?.audioFile && (
+                    <button
+                      onClick={() => setCurrentBeat(fullBeat)}
+                      title={isThisBeatPlaying ? "Pause" : "Play beat"}
+                      className="w-5 h-5 rounded-full bg-teal-600 hover:bg-teal-500 flex items-center justify-center transition-colors shrink-0"
+                    >
+                      {isThisBeatPlaying ? (
+                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                      ) : (
+                        <svg className="w-2.5 h-2.5 text-white ml-px" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={() => saveNote(activeNote.id, editTitle, editContent, null)} title="Unlink beat" className="text-gray-500 hover:text-red-400 ml-0.5 shrink-0">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
+                );
+              })()
               ) : (
                 <button onClick={() => setLinkingBeat(!linkingBeat)} className="text-xs text-gray-500 hover:text-teal-400 border border-gray-700 hover:border-teal-600 px-3 py-1.5 rounded-lg transition-colors">
                   + Link Beat

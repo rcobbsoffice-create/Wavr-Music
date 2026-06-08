@@ -1,6 +1,5 @@
 {
-  "alias": ["wavr-music.vercel.app", "wavr-music-phi.vercel.app"],
-  "crons": [
+"crons": [
     {
       "path": "/api/keep-alive",
       "schedule": "0 0 * * *"

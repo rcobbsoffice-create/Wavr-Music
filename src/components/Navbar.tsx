@@ -82,6 +82,7 @@ export default function Navbar() {
             {[
               { label: "Home", href: "/" },
               { label: "Beats", href: "/marketplace" },
+              { label: "Artists", href: "/artists" },
               { label: "Kits", href: "/kits" },
               { label: "Collections", href: "/collections" },
               { label: "About", href: "/about" },
@@ -172,6 +173,7 @@ export default function Navbar() {
           {[
             { label: "Home", href: "/" },
             { label: "Beats", href: "/marketplace" },
+            { label: "Artists", href: "/artists" },
             { label: "Sound Kits", href: "/kits" },
             { label: "Collections", href: "/collections" },
             { label: "About Us", href: "/about" },

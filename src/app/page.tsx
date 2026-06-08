@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import SonicWaveformHero from "@/components/ui/sonic-waveform";
 
 function FloatingPaths({ position }: { position: number }) {
@@ -114,12 +116,6 @@ const stats = [
   { value: "500K+", label: "Licenses Purchased" },
 ];
 
-const featuredProducers = [
-  { name: "Mr. Beatz", role: "Elite Producer", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=400&auto=format&fit=crop", sales: "2.1k+" },
-  { name: "DJ Phantom", role: "Trap & Drill", image: "https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?q=80&w=400&auto=format&fit=crop", sales: "1.4k+" },
-  { name: "WaveGod", role: "R&B Specialist", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=400&auto=format&fit=crop", sales: "890+" },
-  { name: "Afro King", role: "Afrobeats", image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=400&auto=format&fit=crop", sales: "1.1k+" },
-];
 
 const featuredNews = [
   { id: 1, title: "WAVR 2.0: AI Stem Separation is Here", date: "April 24, 2024", excerpt: "Process your beats into high-quality stems instantly with our new AI engine." },
@@ -132,7 +128,25 @@ const featuredMerch = [
   { name: "Vinyl Record Case", price: "$89.99", image: "https://images.unsplash.com/photo-1603048588665-791ca8aea617?q=80&w=400&auto=format&fit=crop" },
 ];
 
+interface FeaturedProducer {
+  id: string;
+  name: string;
+  avatar: string | null;
+  role: string;
+  sales: number;
+  beats: number;
+}
+
 export default function HomePage() {
+  const [featuredProducers, setFeaturedProducers] = useState<FeaturedProducer[]>([]);
+
+  useEffect(() => {
+    fetch("/api/producers/featured")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setFeaturedProducers(d); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="overflow-x-hidden bg-gray-950">
       {/* Hero */}
@@ -153,20 +167,38 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {featuredProducers.map((p) => (
-              <div key={p.name} className="group relative rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 transition-all hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-600/10">
-                <div className="aspect-square overflow-hidden">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-white font-bold">{p.name}</h3>
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-xs text-gray-500">{p.role}</span>
-                    <span className="text-xs text-blue-400 font-bold">{p.sales} Sales</span>
+            {featuredProducers.length === 0 ? (
+              [1,2,3,4].map(i => (
+                <div key={i} className="rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 animate-pulse">
+                  <div className="aspect-square bg-gray-800" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-gray-800 rounded w-3/4" />
+                    <div className="h-3 bg-gray-800 rounded w-1/2" />
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              featuredProducers.map((p) => (
+                <Link key={p.id} href={`/p/${p.id}`} className="group relative rounded-2xl overflow-hidden bg-gray-900 border border-gray-800 transition-all hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-600/10">
+                  <div className="aspect-square overflow-hidden bg-gray-800 flex items-center justify-center">
+                    {p.avatar ? (
+                      <Image src={p.avatar} alt={p.name} width={400} height={400} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900 to-gray-900">
+                        <span className="text-5xl font-black text-blue-400/60">{p.name.charAt(0)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-white font-bold">{p.name}</h3>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-gray-500">{p.role || "Producer"}</span>
+                      <span className="text-xs text-blue-400 font-bold">{p.sales} Sales</span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

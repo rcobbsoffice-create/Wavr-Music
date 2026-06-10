@@ -40,7 +40,7 @@ interface MyBeat {
 }
 
 
-type Tab = "overview" | "beats" | "kits" | "collections" | "merch" | "earnings" | "analytics" | "licensing" | "payouts" | "settings";
+type Tab = "overview" | "beats" | "kits" | "collections" | "merch" | "earnings" | "analytics" | "marketing" | "licensing" | "payouts" | "settings";
 
 const sidebarLinks = [
   { label: "Overview",  tab: "overview",  icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
@@ -50,6 +50,7 @@ const sidebarLinks = [
   { label: "My Merch",      tab: "merch",       icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" },
   { label: "Earnings",  tab: "earnings",  icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 16v-1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { label: "Analytics", tab: "analytics", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+  { label: "Marketing",  tab: "marketing",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
   { label: "Licensing", tab: "licensing", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { label: "Payouts",   tab: "payouts",   icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
   { label: "Settings",  tab: "settings",  icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
@@ -972,6 +973,704 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
           {saving ? "Saving…" : "Save All Changes"}
         </button>
       </form>
+    </div>
+  );
+}
+
+// ─── Producer Marketing Hub ───────────────────────────────────────────────────
+function ProducerMarketingTab({ beats, producerStats }: { beats: MyBeat[]; producerStats: ProducerStats | null }) {
+  const [selectedBeat, setSelectedBeat] = useState<MyBeat | null>(null);
+  const [aiTips, setAiTips] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [shareText, setShareText] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [promoDiscount, setPromoDiscount] = useState("20");
+  const [promoEnds, setPromoEnds] = useState("");
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [promoMsg, setPromoMsg] = useState("");
+
+  const bestDropTimes = [
+    { day: "Thursday", time: "8 PM – 11 PM", score: 98, note: "Pre-weekend peak — artists planning weekend sessions" },
+    { day: "Friday",   time: "7 PM – 12 AM", score: 96, note: "Weekend energy, highest purchase intent on platform" },
+    { day: "Saturday", time: "2 PM – 6 PM",  score: 89, note: "Producers deep in studio mode all afternoon" },
+    { day: "Sunday",   time: "6 PM – 10 PM", score: 84, note: "Late-session crew finishes tracks, shops beats" },
+    { day: "Tuesday",  time: "9 PM – 11 PM", score: 71, note: "Mid-week creative burst after work hours" },
+  ];
+
+  const channelTips = [
+    { platform: "Instagram", icon: "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069z", color: "from-pink-600 to-purple-600", tip: "Post 15-sec Reels with beat preview. Tag #beatmaker #newbeat #[genre]. Story polls: 'Which drop next?' drive algorithm engagement." },
+    { platform: "Twitter / X", icon: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z", color: "from-gray-700 to-gray-900", tip: "Tweet BPM + key + mood + link. Thread your process. Tag mid-size artists (50K–500K) in your lane for natural discovery." },
+    { platform: "TikTok", icon: "M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3V0z", color: "from-red-600 to-pink-600", tip: "Show the DAW + beat-making process in 30 sec. Hook in first 2 seconds with the hardest drop. Trending audio overlay boosts reach 4x." },
+    { platform: "YouTube Shorts", icon: "M21.582 6.186a2.506 2.506 0 0 0-1.768-1.768C18.254 4 12 4 12 4s-6.254 0-7.814.418a2.506 2.506 0 0 0-1.768 1.768C2 7.746 2 12 2 12s0 4.254.418 5.814a2.506 2.506 0 0 0 1.768 1.768C5.746 20 12 20 12 20s6.254 0 7.814-.418a2.506 2.506 0 0 0 1.768-1.768C22 16.254 22 12 22 12s0-4.254-.418-5.814z", color: "from-red-700 to-red-500", tip: "Vertical format. Show beat from 0 to full in 60 sec. Include BPM, key, price as on-screen text. Pin beat link in comments." },
+  ];
+
+  async function generateAIBrief() {
+    if (!selectedBeat) return;
+    setLoadingAI(true);
+    setAiTips("");
+    try {
+      const cvr = selectedBeat.plays > 0 ? (selectedBeat.sales / selectedBeat.plays) * 100 : 0;
+      const res = await fetch("/api/ai/marketing-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "beat-brief",
+          title: selectedBeat.title,
+          genre: selectedBeat.genre,
+          bpm: selectedBeat.bpm,
+          key: selectedBeat.key,
+          mood: selectedBeat.mood,
+          plays: selectedBeat.plays,
+          sales: selectedBeat.sales,
+          revenue: selectedBeat.revenue,
+          cvr,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.description) setAiTips(data.description);
+      else setAiTips("Could not generate brief. Try again.");
+    } catch { setAiTips("Network error. Try again."); }
+    finally { setLoadingAI(false); }
+  }
+
+  const genreAccents: Record<string, { primary: string; secondary: string; text: string; glowRgb: string; canvasGlow: string }> = {
+    Trap:      { primary: "#7c3aed", secondary: "#4f46e5", text: "#a78bfa", glowRgb: "124,58,237",   canvasGlow: "rgba(124,58,237,0.35)" },
+    "Hip-Hop": { primary: "#d97706", secondary: "#b45309", text: "#fbbf24", glowRgb: "217,119,6",    canvasGlow: "rgba(217,119,6,0.35)"  },
+    Drill:     { primary: "#6b7280", secondary: "#374151", text: "#d1d5db", glowRgb: "107,114,128",  canvasGlow: "rgba(107,114,128,0.3)" },
+    "R&B":     { primary: "#e11d48", secondary: "#9f1239", text: "#fb7185", glowRgb: "225,29,72",    canvasGlow: "rgba(225,29,72,0.35)"  },
+    Pop:       { primary: "#c026d3", secondary: "#7e22ce", text: "#e879f9", glowRgb: "192,38,211",   canvasGlow: "rgba(192,38,211,0.35)" },
+    Afrobeats: { primary: "#ea580c", secondary: "#b45309", text: "#fb923c", glowRgb: "234,88,12",    canvasGlow: "rgba(234,88,12,0.35)"  },
+    "Lo-Fi":   { primary: "#0891b2", secondary: "#0e7490", text: "#38bdf8", glowRgb: "8,145,178",    canvasGlow: "rgba(8,145,178,0.35)"  },
+    House:     { primary: "#2563eb", secondary: "#1d4ed8", text: "#60a5fa", glowRgb: "37,99,235",    canvasGlow: "rgba(37,99,235,0.35)"  },
+  };
+  const defaultAccent = { primary: "#2563eb", secondary: "#1d4ed8", text: "#60a5fa", glowRgb: "37,99,235", canvasGlow: "rgba(37,99,235,0.35)" };
+
+  function getAccent(genre: string) { return genreAccents[genre] ?? defaultAccent; }
+
+  // Deterministic waveform so bars are stable (no hydration mismatch)
+  function waveHeights(seed: string, count: number): number[] {
+    return Array.from({ length: count }, (_, i) => {
+      const h = ((seed.charCodeAt(i % seed.length) * 13 + i * 7) % 60) + 20;
+      return h;
+    });
+  }
+
+  function generateShareCard() {
+    if (!selectedBeat) return;
+    const t = `"${selectedBeat.title}"\n${selectedBeat.genre} · ${selectedBeat.bpm} BPM · Key of ${selectedBeat.key}${selectedBeat.mood ? ` · ${selectedBeat.mood}` : ""}\n\nLease from $${selectedBeat.priceBasic} · Exclusive $${selectedBeat.priceExclusive}\n\n${window.location.origin}/beat/${selectedBeat.id}\n\n#beats #${selectedBeat.genre.toLowerCase().replace(/[^a-z]/g, "")}beats #beatmaker #producer #newbeat #wavr`;
+    setShareText(t);
+    setShareCardVisible(true);
+  }
+
+  async function copyShareText() {
+    await navigator.clipboard.writeText(shareText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function nativeShare() {
+    if (!selectedBeat) return;
+    const beatUrl = `${window.location.origin}/beat/${selectedBeat.id}`;
+    try {
+      await navigator.share({ title: `"${selectedBeat.title}" — Beat on WAVR`, text: shareText, url: beatUrl });
+    } catch { /* user cancelled or not supported */ }
+  }
+
+  function tweetShare() {
+    if (!selectedBeat) return;
+    const beatUrl = `${window.location.origin}/beat/${selectedBeat.id}`;
+    const text = `"${selectedBeat.title}" — ${selectedBeat.genre} · ${selectedBeat.bpm} BPM · from $${selectedBeat.priceBasic}\n\n#beats #beatmaker #${selectedBeat.genre.toLowerCase().replace(/[^a-z]/g, "")}beats`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(beatUrl)}`, "_blank", "noopener");
+  }
+
+  function downloadCardPng() {
+    if (!selectedBeat) return;
+    const W = 1080; const H = 1080;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const accent = getAccent(selectedBeat.genre);
+
+    // OLED black base
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, W, H);
+
+    // Genre radial glow – top-left bloom
+    const bloom = ctx.createRadialGradient(0, 0, 0, 0, 0, 700);
+    bloom.addColorStop(0, accent.canvasGlow);
+    bloom.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle bottom-right counter-glow
+    const bloom2 = ctx.createRadialGradient(W, H, 0, W, H, 500);
+    bloom2.addColorStop(0, `rgba(${accent.glowRgb},0.15)`);
+    bloom2.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bloom2;
+    ctx.fillRect(0, 0, W, H);
+
+    // Outer border with genre color
+    ctx.strokeStyle = `rgba(${accent.glowRgb},0.5)`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(28, 28, W - 56, H - 56);
+
+    // Inner hairline border
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(36, 36, W - 72, H - 72);
+
+    // ── TOP BAR ─────────────────────────────────────────
+    // WAVR wordmark
+    ctx.font = "900 32px system-ui, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("WAVR", 64, 104);
+    ctx.font = "400 22px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fillText("BEAT MARKETPLACE", 64, 134);
+
+    // Genre pill – top right
+    ctx.font = "700 24px system-ui, sans-serif";
+    const genreW = ctx.measureText(selectedBeat.genre.toUpperCase()).width + 48;
+    const pillX = W - genreW - 64;
+    ctx.fillStyle = `rgba(${accent.glowRgb},0.25)`;
+    ctx.beginPath(); ctx.roundRect(pillX, 76, genreW, 46, 23); ctx.fill();
+    ctx.strokeStyle = `rgba(${accent.glowRgb},0.6)`;
+    ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = accent.text;
+    ctx.fillText(selectedBeat.genre.toUpperCase(), pillX + 24, 107);
+
+    // ── WAVEFORM ─────────────────────────────────────────
+    const bars = waveHeights(selectedBeat.title, 48);
+    const barW = 12; const gap = 8;
+    const totalBarW = bars.length * (barW + gap) - gap;
+    let bx = (W - totalBarW) / 2;
+    const waveY = 220;
+    bars.forEach((h, i) => {
+      const opacity = 0.3 + ((i % 5) * 0.12);
+      ctx.fillStyle = `rgba(${accent.glowRgb},${opacity.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.roundRect(bx, waveY - h / 2, barW, h, 4);
+      ctx.fill();
+      bx += barW + gap;
+    });
+
+    // ── BEAT TITLE ───────────────────────────────────────
+    const titleFontSize = selectedBeat.title.length > 14 ? 88 : selectedBeat.title.length > 10 ? 100 : 116;
+    ctx.font = `900 ${titleFontSize}px system-ui, sans-serif`;
+
+    // Glow behind title
+    ctx.shadowColor = `rgba(${accent.glowRgb},0.5)`;
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = "#ffffff";
+
+    const words = selectedBeat.title.toUpperCase().split(" ");
+    let line = ""; let ty = 420;
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > W - 128 && line) {
+        ctx.fillText(line, 64, ty); line = word; ty += titleFontSize + 16;
+      } else { line = test; }
+    }
+    ctx.fillText(line, 64, ty);
+    ctx.shadowBlur = 0;
+
+    // ── TAGS ROW ─────────────────────────────────────────
+    const tagY = ty + 80;
+    const tagItems = [`${selectedBeat.bpm} BPM`, selectedBeat.key, ...(selectedBeat.mood ? [selectedBeat.mood] : [])];
+    let tx = 64;
+    ctx.font = "600 26px system-ui, sans-serif";
+    for (const tag of tagItems) {
+      const tw = ctx.measureText(tag).width + 44;
+      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.beginPath(); ctx.roundRect(tx, tagY, tw, 52, 26); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(tag, tx + 22, tagY + 35);
+      tx += tw + 16;
+    }
+
+    // ── DIVIDER ──────────────────────────────────────────
+    const divY = H - 260;
+    const grad = ctx.createLinearGradient(64, divY, W - 64, divY);
+    grad.addColorStop(0, `rgba(${accent.glowRgb},0.6)`);
+    grad.addColorStop(0.5, `rgba(${accent.glowRgb},0.2)`);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(64, divY); ctx.lineTo(W - 64, divY); ctx.stroke();
+
+    // ── PRICE ────────────────────────────────────────────
+    ctx.font = "500 24px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillText("LEASE FROM", 64, H - 190);
+    ctx.font = "900 96px system-ui, sans-serif";
+    ctx.shadowColor = "rgba(74,222,128,0.5)";
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = "#4ade80";
+    ctx.fillText(`$${selectedBeat.priceBasic}`, 64, H - 100);
+    ctx.shadowBlur = 0;
+
+    // ── BUY NOW BUTTON ────────────────────────────────────
+    const btnW = 260; const btnH = 72; const btnX = W - btnW - 64; const btnY = H - 160;
+    const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
+    btnGrad.addColorStop(0, accent.primary);
+    btnGrad.addColorStop(1, accent.secondary);
+    ctx.fillStyle = btnGrad;
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 14); ctx.fill();
+    ctx.shadowColor = `rgba(${accent.glowRgb},0.7)`;
+    ctx.shadowBlur = 24;
+    ctx.font = "800 30px system-ui, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    const btnLabel = "BUY NOW";
+    const btnLabelW = ctx.measureText(btnLabel).width;
+    ctx.fillText(btnLabel, btnX + (btnW - btnLabelW) / 2, btnY + 47);
+    ctx.shadowBlur = 0;
+
+    // URL watermark
+    ctx.font = "400 20px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillText(`wavr.music/beat/${selectedBeat.id.slice(0, 8)}…`, 64, H - 46);
+
+    // Download
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = `${selectedBeat.title.replace(/\s+/g, "-").toLowerCase()}-wavr.png`;
+    a.click();
+  }
+
+  async function launchPromo() {
+    if (!selectedBeat || !promoDiscount) return;
+    setPromoSaving(true); setPromoMsg("");
+    const pct = parseFloat(promoDiscount) / 100;
+    try {
+      const res = await fetch(`/api/beats/${selectedBeat.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceBasic:     parseFloat((selectedBeat.priceBasic     * (1 - pct)).toFixed(2)),
+          pricePremium:   parseFloat((selectedBeat.pricePremium   * (1 - pct)).toFixed(2)),
+          priceExclusive: parseFloat((selectedBeat.priceExclusive * (1 - pct)).toFixed(2)),
+        }),
+      });
+      if (res.ok) {
+        setPromoMsg(`Promo is live! Beat prices reduced ${promoDiscount}%.${promoEnds ? ` Remember to restore prices after ${new Date(promoEnds).toLocaleDateString()}.` : ""}`);
+      } else {
+        setPromoMsg("Failed to apply promo. Try again.");
+      }
+    } catch { setPromoMsg("Network error."); }
+    finally { setPromoSaving(false); }
+  }
+
+  const topBeat = beats.reduce<MyBeat | null>((best, b) => b.revenue > (best?.revenue ?? -1) ? b : best, null);
+  const avgCVR = beats.length > 0
+    ? (beats.reduce((s, b) => s + (b.plays > 0 ? b.sales / b.plays : 0), 0) / beats.length * 100).toFixed(1)
+    : "0";
+  const unmonetized = beats.filter(b => b.sales === 0 && b.plays > 10);
+  const promoPreviewBasic = selectedBeat ? (selectedBeat.priceBasic * (1 - parseFloat(promoDiscount || "0") / 100)).toFixed(2) : "—";
+  const promoPreviewPremium = selectedBeat ? (selectedBeat.pricePremium * (1 - parseFloat(promoDiscount || "0") / 100)).toFixed(2) : "—";
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-black text-white">Marketing Hub</h1>
+        <p className="text-gray-500 text-sm mt-1">Tools to grow your audience and drive beat sales — who, where, and when to market</p>
+      </div>
+
+      {/* Quick Insight Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Avg. Conversion",  value: `${avgCVR}%`,  sub: "plays to sales",          accent: "text-blue-400"   },
+          { label: "Best Performer",   value: topBeat ? topBeat.title.slice(0, 12) + (topBeat.title.length > 12 ? "…" : "") : "—", sub: topBeat ? `$${topBeat.revenue.toFixed(0)} earned` : "upload beats", accent: "text-violet-400" },
+          { label: "Total Plays",      value: beats.reduce((s, b) => s + b.plays, 0).toLocaleString(), sub: "across all beats", accent: "text-cyan-400" },
+          { label: "Untapped Beats",   value: String(unmonetized.length), sub: `${unmonetized.length > 0 ? "plays w/ 0 sales" : "all monetized"}`, accent: "text-amber-400" },
+        ].map(s => (
+          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <p className="text-gray-500 text-xs mb-1">{s.label}</p>
+            <p className={`text-xl font-black ${s.accent}`}>{s.value}</p>
+            <p className="text-gray-600 text-xs mt-0.5">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Beat Selector */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Select a Beat to Market</h2>
+        <p className="text-gray-500 text-xs mb-4">Choose a beat to unlock AI coaching, share cards, and promo tools</p>
+        {beats.length === 0 ? (
+          <p className="text-gray-600 text-sm">Upload beats first to access these tools.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto pr-1">
+            {beats.map(beat => (
+              <button
+                key={beat.id}
+                onClick={() => { setSelectedBeat(beat); setAiTips(""); setShareCardVisible(false); setPromoMsg(""); }}
+                className={`text-left p-3 rounded-xl border transition-all ${selectedBeat?.id === beat.id ? "bg-blue-900/30 border-blue-600 shadow-lg shadow-blue-900/20" : "bg-gray-800 border-gray-700 hover:border-gray-600"}`}
+              >
+                <p className="text-white text-xs font-bold truncate">{beat.title}</p>
+                <p className="text-gray-500 text-xs">{beat.genre} · {beat.plays.toLocaleString()} plays</p>
+                <p className="text-blue-400 text-xs font-semibold mt-0.5">${beat.revenue.toFixed(0)} earned</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedBeat && (
+        <div className="space-y-6">
+          {/* AI Coach + Share Card */}
+          <div className="grid lg:grid-cols-5 gap-6">
+
+            {/* AI Marketing Coach */}
+            <div className="lg:col-span-3 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-700/30 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-white font-bold">AI Marketing Coach</h2>
+                  <p className="text-gray-500 text-xs">Personalized 3-point strategy for "{selectedBeat.title}"</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                {[
+                  { label: selectedBeat.plays.toLocaleString() + " plays", color: "bg-gray-800 text-gray-300" },
+                  { label: selectedBeat.sales + " sales", color: "bg-gray-800 text-gray-300" },
+                  { label: selectedBeat.plays > 0 ? ((selectedBeat.sales / selectedBeat.plays) * 100).toFixed(1) + "% CVR" : "0% CVR", color: "bg-blue-900/40 text-blue-400 border border-blue-700/30" },
+                  { label: "$" + selectedBeat.revenue.toFixed(0) + " earned", color: "bg-green-900/30 text-green-400 border border-green-700/30" },
+                ].map(b => (
+                  <span key={b.label} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${b.color}`}>{b.label}</span>
+                ))}
+              </div>
+
+              <button
+                onClick={generateAIBrief}
+                disabled={loadingAI}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm mb-5 flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/30"
+              >
+                {loadingAI ? (
+                  <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Analyzing your beat data…</>
+                ) : (
+                  <>Generate My Marketing Brief</>
+                )}
+              </button>
+
+              {aiTips ? (
+                <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-5">
+                  <p className="text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">Your Marketing Brief — "{selectedBeat.title}"</p>
+                  <p className="text-gray-200 text-sm whitespace-pre-line leading-relaxed">{aiTips}</p>
+                </div>
+              ) : (
+                <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-xl p-5 text-center">
+                  <p className="text-gray-600 text-sm">Click above to get a custom marketing plan with specific target audiences, platforms, and timing strategies</p>
+                </div>
+              )}
+            </div>
+
+            {/* Share Card Generator */}
+            <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-violet-600/20 border border-violet-700/30 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-white font-bold">Share Card</h2>
+                  <p className="text-gray-500 text-xs">Generate a promo card + share it anywhere</p>
+                </div>
+              </div>
+
+              <button
+                onClick={generateShareCard}
+                className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-xl text-sm mb-4 transition-colors"
+              >
+                Generate Share Card
+              </button>
+
+              {shareCardVisible ? (
+                <>
+                  {/* Visual preview card */}
+                  {(() => {
+                    const acc = getAccent(selectedBeat.genre);
+                    const bars = waveHeights(selectedBeat.title, 32);
+                    return (
+                      <div
+                        className="rounded-2xl overflow-hidden mb-3 relative select-none"
+                        style={{ background: "#000", border: `1.5px solid rgba(${acc.glowRgb},0.45)` }}
+                      >
+                        {/* Genre glow bloom */}
+                        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 70% 60% at 0% 0%, rgba(${acc.glowRgb},0.28) 0%, transparent 70%)` }} />
+                        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 50% 50% at 100% 100%, rgba(${acc.glowRgb},0.12) 0%, transparent 70%)` }} />
+
+                        <div className="relative z-10 p-5">
+                          {/* Top bar */}
+                          <div className="flex items-start justify-between mb-5">
+                            <div>
+                              <p className="text-white font-black text-sm tracking-widest">WAVR</p>
+                              <p className="text-white/30 text-[9px] tracking-[0.18em] uppercase">Beat Marketplace</p>
+                            </div>
+                            <span
+                              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border"
+                              style={{ color: acc.text, borderColor: `rgba(${acc.glowRgb},0.5)`, background: `rgba(${acc.glowRgb},0.15)` }}
+                            >
+                              {selectedBeat.genre}
+                            </span>
+                          </div>
+
+                          {/* Waveform */}
+                          <div className="flex items-center gap-px mb-4" style={{ height: 36 }}>
+                            {bars.map((h, i) => (
+                              <div
+                                key={i}
+                                className="rounded-sm flex-1"
+                                style={{
+                                  height: `${h}%`,
+                                  background: `rgba(${acc.glowRgb},${0.25 + (i % 5) * 0.13})`,
+                                  minHeight: 4,
+                                }}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Beat title */}
+                          <p
+                            className="font-black leading-none mb-3 truncate"
+                            style={{
+                              fontSize: selectedBeat.title.length > 16 ? "1.35rem" : "1.65rem",
+                              color: "#fff",
+                              textShadow: `0 0 32px rgba(${acc.glowRgb},0.7)`,
+                            }}
+                          >
+                            {selectedBeat.title.toUpperCase()}
+                          </p>
+
+                          {/* Tags */}
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {[`${selectedBeat.bpm} BPM`, selectedBeat.key, ...(selectedBeat.mood ? [selectedBeat.mood] : [])].map(tag => (
+                              <span key={tag} className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/[0.07] text-white/60 border border-white/10">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-px mb-4" style={{ background: `linear-gradient(to right, rgba(${acc.glowRgb},0.5), transparent)` }} />
+
+                          {/* Price + CTA */}
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-0.5">Lease from</p>
+                              <p className="font-black text-2xl text-green-400" style={{ textShadow: "0 0 20px rgba(74,222,128,0.5)" }}>
+                                ${selectedBeat.priceBasic}
+                              </p>
+                            </div>
+                            <span
+                              className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shadow-lg"
+                              style={{ background: `linear-gradient(135deg, ${acc.primary}, ${acc.secondary})`, boxShadow: `0 4px 20px rgba(${acc.glowRgb},0.5)` }}
+                            >
+                              BUY NOW
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Caption text */}
+                  <textarea
+                    readOnly value={shareText} rows={5}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-gray-300 text-xs resize-none font-mono mb-3 leading-relaxed"
+                  />
+
+                  {/* Share action buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Download PNG */}
+                    <button
+                      onClick={downloadCardPng}
+                      className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      Download PNG
+                    </button>
+
+                    {/* Native share (mobile) */}
+                    {"share" in navigator ? (
+                      <button
+                        onClick={nativeShare}
+                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        Share…
+                      </button>
+                    ) : (
+                      <button
+                        onClick={tweetShare}
+                        className="flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-gray-200 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                        Post on X
+                      </button>
+                    )}
+
+                    {/* Tweet (always shown alongside native share) */}
+                    {"share" in navigator && (
+                      <button
+                        onClick={tweetShare}
+                        className="flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-gray-200 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                        Post on X
+                      </button>
+                    )}
+
+                    {/* Copy text */}
+                    <button
+                      onClick={copyShareText}
+                      className={`flex items-center justify-center gap-2 font-bold py-2.5 rounded-xl text-xs transition-all ${"share" in navigator ? "col-span-2" : ""} ${copied ? "bg-green-600 text-white" : "bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600"}`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                      {copied ? "Copied!" : "Copy Caption"}
+                    </button>
+                  </div>
+
+                  <p className="text-gray-600 text-[10px] mt-2 text-center">PNG is 1080×1080 — ready for Instagram, TikTok, or Twitter</p>
+                </>
+              ) : (
+                <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-xl p-6 text-center">
+                  <p className="text-gray-600 text-xs">Your promo card + share buttons will appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Promo Window */}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-700/30 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+              </div>
+              <div>
+                <h2 className="text-white font-bold">Promo Window</h2>
+                <p className="text-gray-500 text-xs">Apply a limited-time discount to "{selectedBeat.title}" to create urgency and drive conversions</p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-5 items-start">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-2">Discount Amount</label>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {["10", "20", "30", "50"].map(p => (
+                    <button key={p} type="button" onClick={() => setPromoDiscount(p)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${promoDiscount === p ? "bg-amber-600/30 border-amber-500 text-amber-300 shadow-sm" : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500"}`}>
+                      {p}% off
+                    </button>
+                  ))}
+                </div>
+                <input type="number" min="5" max="90" value={promoDiscount} onChange={e => setPromoDiscount(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-600" placeholder="Custom %" />
+              </div>
+
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-2">Promo End Date <span className="text-gray-600">(reminder only)</span></label>
+                <input type="date" value={promoEnds} onChange={e => setPromoEnds(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-600 mb-3" />
+
+                <div className="bg-gray-800 rounded-xl p-3">
+                  <p className="text-gray-500 text-[11px] mb-1.5">New prices after {promoDiscount}% off</p>
+                  <p className="text-white text-sm font-bold">Basic: <span className="text-amber-400">${promoPreviewBasic}</span> <span className="text-gray-600 line-through text-xs">${selectedBeat.priceBasic}</span></p>
+                  <p className="text-gray-400 text-xs">Premium: ${promoPreviewPremium}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="bg-blue-900/20 border border-blue-700/30 rounded-xl p-3">
+                  <p className="text-blue-400 text-xs font-semibold mb-1">Pro Tip</p>
+                  <p className="text-gray-400 text-xs leading-relaxed">Pair with a social post timed to Thursday 8–11 PM for maximum impact. Run promos for 48–72 hours max to maintain urgency.</p>
+                </div>
+                <button onClick={launchPromo} disabled={promoSaving || !promoDiscount}
+                  className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm transition-colors shadow-lg shadow-amber-900/20">
+                  {promoSaving ? "Applying Promo…" : "Launch Promo Now"}
+                </button>
+              </div>
+            </div>
+            {promoMsg && (
+              <p className={`text-sm mt-4 px-4 py-2.5 rounded-xl border ${promoMsg.includes("live") ? "text-amber-300 bg-amber-900/20 border-amber-700/30" : "text-red-400 bg-red-900/10 border-red-800/20"}`}>{promoMsg}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Best Times to Drop */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Best Times to Drop & Promote</h2>
+        <p className="text-gray-500 text-xs mb-5">Based on platform listener activity — ranked by engagement score</p>
+        <div className="space-y-2.5">
+          {bestDropTimes.map((t, i) => (
+            <div key={t.day} className="flex items-center gap-4 bg-gray-800/50 border border-gray-700/50 rounded-xl p-4">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 ${i === 0 ? "bg-blue-600 text-white" : i === 1 ? "bg-blue-900/60 text-blue-300 border border-blue-700/30" : "bg-gray-700 text-gray-400"}`}>
+                {i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span className="text-white font-bold text-sm">{t.day}</span>
+                  <span className="text-blue-400 text-xs font-medium bg-blue-900/30 border border-blue-700/30 px-2 py-0.5 rounded-full">{t.time}</span>
+                </div>
+                <p className="text-gray-500 text-xs">{t.note}</p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-violet-600" style={{ width: `${t.score}%` }} />
+                </div>
+                <span className="text-gray-400 text-xs w-8 text-right">{t.score}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Platform Channel Guide */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Platform Channel Guide</h2>
+        <p className="text-gray-500 text-xs mb-5">Where to post and how to format content for maximum reach</p>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {channelTips.map(c => (
+            <div key={c.platform} className="bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-gray-600 transition-colors">
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c.color} flex items-center justify-center mb-3`}>
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d={c.icon} /></svg>
+              </div>
+              <p className="text-white font-bold text-sm mb-2">{c.platform}</p>
+              <p className="text-gray-400 text-xs leading-relaxed">{c.tip}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Untapped beats */}
+      {unmonetized.length > 0 && (
+        <div className="bg-gradient-to-br from-amber-900/20 to-gray-900 border border-amber-700/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-amber-600/20 border border-amber-700/30 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            </div>
+            <div>
+              <h2 className="text-white font-bold">Untapped Opportunities</h2>
+              <p className="text-gray-500 text-xs">{unmonetized.length} beats with plays but zero sales — prime targets for a promo push</p>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {unmonetized.slice(0, 6).map(beat => (
+              <button key={beat.id} onClick={() => { setSelectedBeat(beat); setAiTips(""); setShareCardVisible(false); setPromoMsg(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="text-left bg-gray-800/60 border border-gray-700 hover:border-amber-600/40 rounded-xl p-3 transition-all group">
+                <p className="text-white text-xs font-bold truncate">{beat.title}</p>
+                <p className="text-gray-500 text-xs">{beat.plays} plays · {beat.genre}</p>
+                <p className="text-amber-400 text-xs mt-1 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Select to market →</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1978,6 +2677,11 @@ export default function ProducerDashboard() {
         {/* Merch Tab */}
         {activeTab === "merch" && (
           <MerchTab />
+        )}
+
+        {/* Marketing Hub Tab */}
+        {activeTab === "marketing" && (
+          <ProducerMarketingTab beats={myBeatsData} producerStats={producerStats} />
         )}
 
         {/* Settings Tab */}

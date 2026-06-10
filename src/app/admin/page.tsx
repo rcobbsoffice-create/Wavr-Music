@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
-type Tab = "overview" | "users" | "moderation" | "revenue" | "support" | "news" | "newsletter" | "branding" | "payments";
+type Tab = "overview" | "users" | "moderation" | "revenue" | "support" | "news" | "newsletter" | "branding" | "payments" | "marketing";
 
 interface AdminStats {
   totalUsers: number;
@@ -44,6 +44,7 @@ const sidebarItems: { tab: Tab; label: string; emoji: string }[] = [
   { tab: "users",       label: "User Management",    emoji: "👥" },
   { tab: "moderation",  label: "Content Moderation", emoji: "🎵" },
   { tab: "revenue",     label: "Revenue & Payouts",  emoji: "💰" },
+  { tab: "marketing",   label: "Marketing",          emoji: "📣" },
   { tab: "support",     label: "Support Tickets",    emoji: "🎫" },
   { tab: "news",        label: "News Posts",         emoji: "📰" },
   { tab: "newsletter",  label: "Newsletter",         emoji: "✉️" },
@@ -639,6 +640,9 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* MARKETING */}
+        {activeTab === "marketing" && <AdminMarketingTab />}
 
         {/* NEWS POSTS */}
         {activeTab === "news" && <NewsManager />}
@@ -1318,6 +1322,291 @@ function PaymentsTab() {
             </tbody>
           </table>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Marketing Command Center ──────────────────────────────────────────
+function AdminMarketingTab() {
+  const [analyticsData, setAnalyticsData] = useState<{ totals: { plays: number; revenue: number; licenses: number; producers: number } } | null>(null);
+  const [beats, setBeats] = useState<{ id: string; title: string; producerName: string; genre: string; plays: number; status: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string; plan: string; createdAt: string; revenue: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [campaignForm, setCampaignForm] = useState({ title: "", beatTitle: "", discount: "", channel: "newsletter", urgency: "48h" });
+  const [campaignMsg, setCampaignMsg] = useState("");
+  const [generatingCampaign, setGeneratingCampaign] = useState(false);
+  const [campaignCopy, setCampaignCopy] = useState("");
+  const [copiedCampaign, setCopiedCampaign] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetch("/api/analytics?range=30").then(r => r.json()).catch(() => null),
+      fetch("/api/admin/beats").then(r => r.json()).catch(() => []),
+      fetch("/api/admin/users").then(r => r.json()).catch(() => []),
+    ]).then(([analytics, beatsData, usersData]) => {
+      if (analytics) setAnalyticsData(analytics);
+      setBeats(Array.isArray(beatsData) ? beatsData : []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  async function generateCampaign() {
+    if (!campaignForm.title) return;
+    setGeneratingCampaign(true); setCampaignMsg(""); setCampaignCopy("");
+    try {
+      const res = await fetch("/api/ai/marketing-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "campaign",
+          title: campaignForm.title,
+          beatTitle: campaignForm.beatTitle,
+          discount: campaignForm.discount,
+          channel: campaignForm.channel,
+          urgency: campaignForm.urgency,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.description) { setCampaignCopy(data.description); setCampaignMsg("Campaign brief generated!"); }
+      else setCampaignMsg("Generation failed. Try again.");
+    } catch { setCampaignMsg("Network error."); }
+    finally { setGeneratingCampaign(false); }
+  }
+
+  async function copyCampaign() {
+    await navigator.clipboard.writeText(campaignCopy);
+    setCopiedCampaign(true);
+    setTimeout(() => setCopiedCampaign(false), 2500);
+  }
+
+  const totalPlays = analyticsData?.totals.plays ?? 0;
+  const totalLicenses = analyticsData?.totals.licenses ?? 0;
+  const totalRevenue = analyticsData?.totals.revenue ?? 0;
+  const conversionRate = totalPlays > 0 ? ((totalLicenses / totalPlays) * 100).toFixed(2) : "0.00";
+  const revenuePerPlay = totalPlays > 0 ? (totalRevenue / totalPlays).toFixed(3) : "0.000";
+
+  const topOpportunities = beats.filter(b => b.status === "active" && b.plays > 20).sort((a, b) => b.plays - a.plays).slice(0, 8);
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const newUsers = users.filter(u => new Date(u.createdAt) > thirtyDaysAgo);
+  const recentUsers = users.filter(u => new Date(u.createdAt) > sevenDaysAgo);
+  const producers = users.filter(u => u.role === "producer");
+  const topSpenders = users.filter(u => u.revenue > 50).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+  const funnelSteps = [
+    { label: "Total Plays",         value: totalPlays,                                             color: "bg-blue-600",   pct: 100 },
+    { label: "Engaged (est. 34%)",  value: Math.round(totalPlays * 0.34),                          color: "bg-blue-500",   pct: 34  },
+    { label: "License Purchases",   value: totalLicenses,                                           color: "bg-violet-600", pct: totalPlays > 0 ? Math.min(100, parseFloat(conversionRate) * 3) : 0 },
+    { label: "Revenue Generated",   value: "$" + totalRevenue.toFixed(0),                          color: "bg-green-600",  pct: totalPlays > 0 ? Math.min(100, parseFloat(conversionRate) * 2) : 0 },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-black text-white">Marketing Command Center</h1>
+        <p className="text-gray-500 text-sm mt-1">Platform intelligence, audience segmentation, and campaign tools — who, where, when</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Conversion Rate",  value: `${conversionRate}%`,       sub: "plays → licenses (30d)",    accent: "text-blue-400"   },
+          { label: "Revenue / Play",   value: `$${revenuePerPlay}`,        sub: "avg revenue per play",      accent: "text-green-400"  },
+          { label: "New Users (30d)",  value: newUsers.length.toString(),  sub: `${recentUsers.length} this week`, accent: "text-violet-400" },
+          { label: "Active Producers", value: producers.length.toString(), sub: "on platform",               accent: "text-cyan-400"   },
+        ].map(s => (
+          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <p className="text-gray-500 text-xs mb-1">{s.label}</p>
+            <p className={`text-xl font-black ${s.accent}`}>{loading ? "…" : s.value}</p>
+            <p className="text-gray-600 text-xs mt-0.5">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Conversion Funnel — Last 30 Days</h2>
+          <p className="text-gray-500 text-xs mb-5">Listener journey from play to purchase</p>
+          {loading ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-12 bg-gray-800 rounded-xl animate-pulse" />)}</div>
+          ) : (
+            <div className="space-y-3">
+              {funnelSteps.map((step, i) => (
+                <div key={step.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 text-xs w-4">{i + 1}</span>
+                      <span className="text-gray-300 text-sm font-medium">{step.label}</span>
+                    </div>
+                    <span className="text-white font-bold text-sm">{typeof step.value === "number" ? step.value.toLocaleString() : step.value}</span>
+                  </div>
+                  <div className="h-8 bg-gray-800 rounded-xl overflow-hidden">
+                    <div className={`h-full ${step.color} rounded-xl flex items-center px-3`} style={{ width: `${Math.max(step.pct, 2)}%` }}>
+                      {step.pct > 8 && <span className="text-white text-xs font-semibold">{typeof step.pct === "number" ? step.pct.toFixed(1) : step.pct}%</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="mt-3 pt-3 border-t border-gray-800">
+                <p className="text-gray-500 text-xs">
+                  At <span className="text-white font-semibold">{conversionRate}%</span> conversion —{" "}
+                  {parseFloat(conversionRate) < 1 ? "below industry avg. Run promo windows + feature high-play beats."
+                    : parseFloat(conversionRate) < 3 ? "on track. A/B test pricing tiers to push above 3%."
+                    : "strong! Scale catalog reach to grow revenue."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-white font-bold mb-1">Top Promo Opportunities</h2>
+          <p className="text-gray-500 text-xs mb-5">High-play active beats — prime candidates for featured campaigns</p>
+          {loading ? (
+            <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-gray-800 rounded-xl animate-pulse" />)}</div>
+          ) : topOpportunities.length === 0 ? (
+            <p className="text-gray-600 text-sm py-8 text-center">No beat data available yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {topOpportunities.map((beat, i) => (
+                <div key={beat.id} className="flex items-center gap-3 bg-gray-800/50 border border-gray-700/50 rounded-xl p-3 hover:border-blue-700/30 transition-colors">
+                  <span className="text-gray-600 text-xs w-5 shrink-0">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-bold truncate">{beat.title}</p>
+                    <p className="text-gray-500 text-xs">{beat.producerName} · {beat.genre}</p>
+                  </div>
+                  <span className="text-blue-400 text-xs font-bold shrink-0">{beat.plays.toLocaleString()} plays</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Audience Segments</h2>
+        <p className="text-gray-500 text-xs mb-5">User breakdown for precision targeting — know exactly who to reach</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          {[
+            { label: "New Subscribers",  count: newUsers.length,    desc: "Joined last 30 days",  strategy: "Onboarding sequence: feature top beats, explain licensing tiers, first-purchase welcome discount",           color: "border-blue-700/30 bg-blue-900/10",    accent: "text-blue-400"   },
+            { label: "Active Producers", count: producers.length,   desc: "Uploading & selling",  strategy: "Share platform growth metrics, promote their catalog, invite to exclusive producer marketing workshops",       color: "border-violet-700/30 bg-violet-900/10", accent: "text-violet-400" },
+            { label: "Top Spenders",     count: topSpenders.length, desc: "$50+ in purchases",    strategy: "VIP early access to exclusive beats, loyalty reward codes, personalized genre-based recommendations",         color: "border-green-700/30 bg-green-900/10",  accent: "text-green-400"  },
+            { label: "Dormant Users",    count: Math.max(0, users.length - newUsers.length - topSpenders.length), desc: "30+ days inactive", strategy: "Re-engagement: 'What's trending on WAVR', curated genre picks, limited-time return discount", color: "border-amber-700/30 bg-amber-900/10",  accent: "text-amber-400"  },
+          ].map(seg => (
+            <div key={seg.label} className={`rounded-xl border p-4 ${seg.color}`}>
+              <p className={`text-2xl font-black mb-0.5 ${seg.accent}`}>{loading ? "…" : seg.count.toLocaleString()}</p>
+              <p className="text-white font-bold text-sm">{seg.label}</p>
+              <p className="text-gray-500 text-xs mb-3">{seg.desc}</p>
+              <p className="text-gray-400 text-xs leading-relaxed border-t border-gray-700/40 pt-3">{seg.strategy}</p>
+            </div>
+          ))}
+        </div>
+        {topSpenders.length > 0 && (
+          <div className="pt-4 border-t border-gray-800">
+            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">Top Spenders — VIP Targets</p>
+            <div className="flex flex-wrap gap-2">
+              {topSpenders.map(u => (
+                <div key={u.id} className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{u.name.charAt(0)}</div>
+                  <span className="text-gray-300 text-xs font-medium">{u.name}</span>
+                  <span className="text-green-400 text-xs font-bold">${u.revenue.toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-700/30 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+          </div>
+          <div>
+            <h2 className="text-white font-bold">AI Campaign Builder</h2>
+            <p className="text-gray-500 text-xs">Generate a full marketing brief for any campaign — ready to execute across channels</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Campaign Name *</label>
+            <input value={campaignForm.title} onChange={e => setCampaignForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Summer Heat Promo 2026"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Featured Beat / Content</label>
+            <input value={campaignForm.beatTitle} onChange={e => setCampaignForm(p => ({ ...p, beatTitle: e.target.value }))} placeholder="Beat title or 'Platform-wide'"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Discount (%)</label>
+            <input value={campaignForm.discount} onChange={e => setCampaignForm(p => ({ ...p, discount: e.target.value }))} type="number" min="0" max="90" placeholder="e.g. 25"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Primary Channel</label>
+            <select value={campaignForm.channel} onChange={e => setCampaignForm(p => ({ ...p, channel: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600">
+              <option value="newsletter">Newsletter / Email</option>
+              <option value="social">Social Media</option>
+              <option value="push">Push Notification</option>
+              <option value="all">All Channels</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-medium block mb-1.5">Urgency Window</label>
+            <select value={campaignForm.urgency} onChange={e => setCampaignForm(p => ({ ...p, urgency: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-600">
+              <option value="24h">24 Hours (Flash)</option>
+              <option value="48h">48 Hours</option>
+              <option value="72h">72 Hours</option>
+              <option value="1 week">1 Week</option>
+              <option value="ongoing">Ongoing</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button onClick={generateCampaign} disabled={generatingCampaign || !campaignForm.title}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
+              {generatingCampaign ? (<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Generating…</>) : "Generate Campaign Brief"}
+            </button>
+          </div>
+        </div>
+        {campaignMsg && <p className={`text-sm mb-3 ${campaignMsg.includes("generated") ? "text-green-400" : "text-red-400"}`}>{campaignMsg}</p>}
+        {campaignCopy && (
+          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Campaign Brief — "{campaignForm.title}"</p>
+              <button onClick={copyCampaign} className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${copiedCampaign ? "bg-green-600 text-white border-green-600" : "text-gray-400 border-gray-600 hover:border-gray-500"}`}>
+                {copiedCampaign ? "Copied!" : "Copy Brief"}
+              </button>
+            </div>
+            <p className="text-gray-200 text-sm whitespace-pre-line leading-relaxed">{campaignCopy}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Platform Timing Intelligence</h2>
+        <p className="text-gray-500 text-xs mb-5">When to run campaigns for maximum impact based on listener behavior</p>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { title: "Flash Sales",               timing: "Thu 8 PM – Fri midnight", impact: "Highest", desc: "48-hour flash discounts on featured beats. Pre-weekend timing catches artists in planning mode. Expect 2–4x normal conversion." },
+            { title: "New Drop Announcements",     timing: "Tue & Thu 9–11 PM",       impact: "High",    desc: "Mid-week announcements build weekend anticipation. Combine newsletter + social for maximum reach across segments." },
+            { title: "Newsletter Campaigns",       timing: "Tue 10 AM or Sun 3 PM",   impact: "Medium",  desc: "Email opens peak mid-morning Tuesday and Sunday afternoon. Segment by genre preference for 40%+ higher click-through." },
+          ].map(c => (
+            <div key={c.title} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-white font-bold text-sm">{c.title}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${c.impact === "Highest" ? "bg-blue-900/40 text-blue-300 border-blue-700/30" : c.impact === "High" ? "bg-violet-900/40 text-violet-300 border-violet-700/30" : "bg-gray-700 text-gray-400 border-gray-600"}`}>{c.impact}</span>
+              </div>
+              <p className="text-blue-400 text-xs mb-2 font-medium">{c.timing}</p>
+              <p className="text-gray-400 text-xs leading-relaxed">{c.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

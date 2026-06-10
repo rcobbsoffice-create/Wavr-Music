@@ -7,7 +7,7 @@ import { usePlayer } from "@/components/PlayerContext";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 
-type Tab = "overview" | "saved" | "purchased" | "lyrics" | "profile" | "merch" | "settings";
+type Tab = "overview" | "saved" | "purchased" | "lyrics" | "marketing" | "profile" | "merch" | "settings";
 
 interface SavedBeat {
   id: string;
@@ -47,6 +47,7 @@ const sidebarLinks = [
   { label: "Saved Beats",tab: "saved",      icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
   { label: "Purchased",  tab: "purchased",  icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
   { label: "Lyrics Lab", tab: "lyrics",     icon: "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" },
+  { label: "Marketing",  tab: "marketing",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
   { label: "My Profile", tab: "profile",    icon: "M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
   { label: "My Merch",   tab: "merch",      icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" },
   { label: "Settings",   tab: "settings",   icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
@@ -378,7 +379,7 @@ export default function ArtistPage() {
 
       <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         <DashboardHeader
-          title={activeTab === "overview" ? "Artist Dashboard" : activeTab === "saved" ? "Saved Beats" : activeTab === "purchased" ? "My Purchases" : activeTab === "lyrics" ? "Lyrics Lab" : "Settings"}
+          title={activeTab === "overview" ? "Artist Dashboard" : activeTab === "saved" ? "Saved Beats" : activeTab === "purchased" ? "My Purchases" : activeTab === "lyrics" ? "Lyrics Lab" : activeTab === "marketing" ? "Marketing Hub" : "Settings"}
           onOpenSidebar={() => setSidebarOpen(true)}
         />
 
@@ -502,6 +503,9 @@ export default function ArtistPage() {
         {/* Lyrics Lab */}
         {activeTab === "lyrics" && <LyricsLab userId={user?.id} />}
 
+        {/* Marketing */}
+        {activeTab === "marketing" && <ArtistMarketingTab userName={user?.name} />}
+
         {/* Profile */}
         {activeTab === "profile" && (
           <ArtistProfile userName={user?.name} userEmail={user?.email} />
@@ -515,6 +519,507 @@ export default function ArtistPage() {
           <ArtistSettings userName={user?.name} userEmail={user?.email} />
         )}
       </main>
+      </div>
+    </div>
+  );
+}
+
+// ─── Artist Marketing Hub ────────────────────────────────────────────────────
+function ArtistMarketingTab({ userName }: { userName?: string }) {
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [songTitle, setSongTitle]     = useState("");
+  const [songGenre, setSongGenre]     = useState("Hip-Hop");
+  const [releaseType, setReleaseType] = useState("Single");
+  const [promoCopy, setPromoCopy]     = useState("");
+  const [generatingCopy, setGeneratingCopy] = useState(false);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [shareText, setShareText]     = useState("");
+  const [copied, setCopied]           = useState<string | null>(null);
+  const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/profile").then(r => r.json()).then(d => {
+      try { if (d.socialLinks) setSocialLinks(JSON.parse(d.socialLinks)); } catch {}
+    }).catch(() => {});
+  }, []);
+
+  const platforms = [
+    { key: "spotify",    label: "Spotify",       color: "#1DB954", bg: "rgba(29,185,84,0.12)",  border: "rgba(29,185,84,0.3)",  icon: "M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.428-5.304-1.751-8.786-.959a.623.623 0 01-.277-1.215c3.809-.87 7.077-.496 9.713 1.11a.623.623 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.786-2.131-9.965-1.166a.78.78 0 01-.963-.519.781.781 0 01.519-.963c3.632-1.102 8.147-.568 11.224 1.328a.78.78 0 01.257 1.063zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.937.937 0 11-.543-1.794c3.532-1.072 9.404-.865 13.115 1.338a.937.937 0 01-.954 1.613z" },
+    { key: "youtube",    label: "YouTube",        color: "#FF0000", bg: "rgba(255,0,0,0.10)",    border: "rgba(255,0,0,0.3)",    icon: "M21.582 6.186a2.506 2.506 0 0 0-1.768-1.768C18.254 4 12 4 12 4s-6.254 0-7.814.418a2.506 2.506 0 0 0-1.768 1.768C2 7.746 2 12 2 12s0 4.254.418 5.814a2.506 2.506 0 0 0 1.768 1.768C5.746 20 12 20 12 20s6.254 0 7.814-.418a2.506 2.506 0 0 0 1.768-1.768C22 16.254 22 12 22 12s0-4.254-.418-5.814zM10 15V9l5.197 3L10 15z" },
+    { key: "soundcloud", label: "SoundCloud",     color: "#FF5500", bg: "rgba(255,85,0,0.10)",   border: "rgba(255,85,0,0.3)",   icon: "M1.175 12.225c-.015 0-.023.01-.025.024l-.3 1.887.3 1.863c.002.015.01.024.025.024s.023-.009.025-.024l.34-1.863-.34-1.887c-.002-.015-.01-.024-.025-.024zm.844-.634c-.02 0-.033.014-.036.033l-.255 2.52.255 2.471c.003.02.016.033.036.033s.033-.013.036-.033l.29-2.47-.29-2.521c-.003-.02-.016-.033-.036-.033zm.903-.197c-.024 0-.042.018-.044.042l-.21 2.717.21 2.668c.002.024.02.042.044.042s.042-.018.044-.042l.24-2.668-.24-2.717c-.002-.024-.02-.042-.044-.042zm17.08 2.376c-.14-2.65-2.28-4.743-4.943-4.743-.68 0-1.328.134-1.916.376-.258-3.43-3.1-6.131-6.594-6.131-1.137 0-2.21.302-3.127.83-.338.2-.428.405-.43.583v11.87c.002.183.145.333.328.345h16.34c.18-.006.342-.157.342-.342V14.57c0-.268-.018-.534-.055-.8z" },
+    { key: "twitter",    label: "Twitter / X",    color: "#ffffff", bg: "rgba(255,255,255,0.07)", border: "rgba(255,255,255,0.15)", icon: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" },
+    { key: "instagram",  label: "Instagram",      color: "#E1306C", bg: "rgba(225,48,108,0.10)", border: "rgba(225,48,108,0.3)", icon: "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" },
+  ];
+
+  const strategies = [
+    {
+      id: "spotify",
+      label: "Spotify Playlisting",
+      color: "#1DB954",
+      steps: [
+        "Submit to Spotify editorial 7 days before release via Spotify for Artists → Music → Upcoming.",
+        "Pitch to independent playlist curators on SubmitHub and Groover — target playlists with 1K–50K followers for best conversion.",
+        "Release on Friday (global New Music Friday day). Upload by Tuesday to hit the editorial submission window.",
+        "Add your song to your own public playlist immediately after release to signal engagement.",
+        "Share your Spotify.link (not just the app link) — it opens in browser too and doesn't lose mobile users.",
+      ],
+    },
+    {
+      id: "youtube",
+      label: "YouTube Growth",
+      color: "#FF0000",
+      steps: [
+        "Upload as 'Unlisted' first — add custom thumbnail, SEO title, and full description before publishing.",
+        "Title format: '[Song Name] - [Artist] (Official Audio/Video)'. Include genre + mood in description.",
+        "Post as a YouTube Short (60 sec vertical clip) the same day — Shorts get pushed to non-subscribers.",
+        "Pin a comment with your other streaming links within 10 minutes of publishing.",
+        "Best upload time: Thursday 2–4 PM EST. Avoid Monday–Tuesday (lowest engagement days).",
+      ],
+    },
+    {
+      id: "tiktok",
+      label: "TikTok Viral Strategy",
+      color: "#ff2d55",
+      steps: [
+        "Create a 'use this sound' trend — post the first video using your song as audio with a hook challenge or dance.",
+        "Use your song as the background audio in at least 3 different styles of videos (studio clip, lyric video, day-in-life).",
+        "First 3 seconds must hook: start with the loudest / most memorable part of the song — not the intro.",
+        "Post 3 TikToks on release day: morning, afternoon, evening — the algorithm treats each as a fresh push.",
+        "Hashtags: #newmusic #[genre] #fyp #[yourartistaname] — keep to 5 max. More doesn't help.",
+      ],
+    },
+    {
+      id: "instagram",
+      label: "Instagram Strategy",
+      color: "#E1306C",
+      steps: [
+        "Post a Reel with the song the same hour it drops — Reels get 3x more reach than static posts.",
+        "Story countdown sticker 24h before release — followers get notified when the song drops.",
+        "Add your Spotify/Apple Music link to your bio link-in-bio tool (Linktree or similar) before release.",
+        "Caption hook: start with a lyric or emotional line from the song — not 'NEW SONG OUT NOW'.",
+        "Cross-post the Reel to your Facebook page — Meta cross-promotes between apps in the algorithm.",
+      ],
+    },
+    {
+      id: "apple",
+      label: "Apple Music Editorial",
+      color: "#fc3c44",
+      steps: [
+        "Claim and verify your Apple Music for Artists profile — unverified profiles can't submit for editorial.",
+        "Submit through your distributor (DistroKid, TuneCore, etc.) at least 2 weeks before release.",
+        "Write a compelling artist bio — Apple editorial teams read these when selecting New Artists.",
+        "Include high-res artwork (3000×3000px minimum) — Apple rejects editorial pitches with poor quality art.",
+        "After release, share the Apple Music link via social — Apple's algorithm tracks external traffic to your page.",
+      ],
+    },
+    {
+      id: "soundcloud",
+      label: "SoundCloud Reach",
+      color: "#FF5500",
+      steps: [
+        "Post the full track — SoundCloud users dislike 30-second previews. Give it all.",
+        "Add waveform tags at key moments (drop, hook, bridge) — listeners click these, boosting your play count.",
+        "Repost other artists in your lane first — they'll return the favor and expose you to their following.",
+        "Join SoundCloud communities and groups in your genre. Comment on trending tracks in your niche.",
+        "SoundCloud Go+ submission: apply via SoundCloud for Artists to get on curated discovery playlists.",
+      ],
+    },
+  ];
+
+  async function generatePromoCopy() {
+    if (!songTitle) return;
+    setGeneratingCopy(true); setPromoCopy("");
+    try {
+      const res = await fetch("/api/ai/marketing-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "campaign",
+          title: `${releaseType}: "${songTitle}"`,
+          beatTitle: songTitle,
+          discount: "",
+          channel: "all",
+          urgency: "ongoing",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.description) setPromoCopy(data.description);
+    } catch { setPromoCopy("Could not generate. Try again."); }
+    finally { setGeneratingCopy(false); }
+  }
+
+  function generateShareCard() {
+    const t = `${releaseType.toUpperCase()} OUT NOW\n\n"${songTitle || "My New Song"}"\n${songGenre}${userName ? ` by ${userName}` : ""}\n\n${[socialLinks.spotify, socialLinks.youtube, socialLinks.soundcloud].filter(Boolean).join(" | ") || "Link in bio"}\n\n#newmusic #${songGenre.toLowerCase().replace(/[^a-z]/g, "")} #${releaseType.toLowerCase()} #artist #music`;
+    setShareText(t);
+    setShareCardVisible(true);
+  }
+
+  async function copyText(text: string, id: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function nativeShare() {
+    try {
+      await navigator.share({ title: `"${songTitle}" — ${releaseType}`, text: shareText, url: socialLinks.spotify || socialLinks.youtube || "" });
+    } catch { /* cancelled */ }
+  }
+
+  const connectedPlatforms = platforms.filter(p => socialLinks[p.key]);
+  const disconnectedPlatforms = platforms.filter(p => !socialLinks[p.key]);
+
+  const releaseDropTimes = [
+    { day: "Friday",    time: "12 AM EST",  note: "Global New Music Friday — Spotify editorial, Apple Music, playlists all refresh at midnight", score: 100 },
+    { day: "Thursday",  time: "8–11 PM EST", note: "Pre-release hype night — post teasers, TikToks, and go live before midnight drop", score: 92 },
+    { day: "Friday",    time: "9 AM–12 PM", note: "Morning push to catch commuters and playlist surfing on all platforms", score: 85 },
+    { day: "Tuesday",   time: "2–4 PM EST", note: "Strong mid-week for YouTube + SoundCloud — outside Friday noise, easier to stand out", score: 68 },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-black text-white">Marketing Hub</h1>
+        <p className="text-gray-500 text-sm mt-1">Grow your audience on Spotify, YouTube, TikTok, and every platform you're on</p>
+      </div>
+
+      {/* Streaming Links */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-white font-bold">Your Streaming Presence</h2>
+            <p className="text-gray-500 text-xs mt-0.5">{connectedPlatforms.length} of {platforms.length} platforms linked</p>
+          </div>
+          <a href="/artist?tab=profile"
+            onClick={e => { e.preventDefault(); }}
+            className="text-xs text-teal-400 border border-teal-700/40 px-3 py-1.5 rounded-lg hover:bg-teal-600/10 transition-colors cursor-pointer"
+          >
+            Manage Links →
+          </a>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {platforms.map(p => {
+            const url = socialLinks[p.key];
+            return (
+              <div key={p.key} className="rounded-xl border p-4 flex items-center gap-3 transition-all"
+                style={{ background: url ? p.bg : "rgba(255,255,255,0.02)", borderColor: url ? p.border : "rgba(255,255,255,0.07)" }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: url ? p.bg : "rgba(255,255,255,0.05)", border: `1px solid ${url ? p.border : "rgba(255,255,255,0.08)"}` }}>
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" style={{ color: url ? p.color : "#4b5563" }}>
+                    <path d={p.icon} />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: url ? "#fff" : "#6b7280" }}>{p.label}</p>
+                  {url ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      className="text-[11px] truncate block hover:underline"
+                      style={{ color: p.color }}>
+                      {url.replace("https://", "").slice(0, 32)}{url.length > 38 ? "…" : ""}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600 text-[11px]">Not connected — add in Profile</p>
+                  )}
+                </div>
+                {url && (
+                  <button onClick={() => copyText(url, p.key)} title="Copy link"
+                    className="shrink-0 text-gray-500 hover:text-white transition-colors p-1">
+                    {copied === p.key
+                      ? <svg className="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    }
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {disconnectedPlatforms.length > 0 && (
+          <p className="text-gray-600 text-xs mt-3">
+            Add missing links in <span className="text-teal-400">My Profile → Social Links</span> to unlock full platform tracking.
+          </p>
+        )}
+      </div>
+
+      {/* Release + Share Card side by side */}
+      <div className="grid lg:grid-cols-2 gap-6">
+
+        {/* AI Promo Copy Generator */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-teal-600/20 border border-teal-700/30 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <div>
+              <h2 className="text-white font-bold">AI Promo Copy</h2>
+              <p className="text-gray-500 text-xs">Platform-ready copy for your release</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Song / Project Title</label>
+              <input value={songTitle} onChange={e => setSongTitle(e.target.value)} placeholder="e.g. Midnight Drive"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-600" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Genre</label>
+                <select value={songGenre} onChange={e => setSongGenre(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-600">
+                  {["Hip-Hop","R&B","Trap","Drill","Pop","Afrobeats","Lo-Fi","House","Soul","Rock","Alternative"].map(g => <option key={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Release Type</label>
+                <select value={releaseType} onChange={e => setReleaseType(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-teal-600">
+                  {["Single","EP","Album","Freestyle","Feature","Remix"].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button onClick={generatePromoCopy} disabled={generatingCopy || !songTitle}
+            className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm mb-4 flex items-center justify-center gap-2 transition-colors">
+            {generatingCopy
+              ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Generating…</>
+              : "Generate Promo Copy"}
+          </button>
+
+          {promoCopy ? (
+            <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4 relative">
+              <p className="text-gray-200 text-sm whitespace-pre-line leading-relaxed">{promoCopy}</p>
+              <button onClick={() => copyText(promoCopy, "copy")}
+                className={`absolute top-3 right-3 text-xs px-2.5 py-1 rounded-lg border transition-all ${copied === "copy" ? "bg-teal-600 text-white border-teal-600" : "text-gray-500 border-gray-600 hover:text-white"}`}>
+                {copied === "copy" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-xl p-4 text-center">
+              <p className="text-gray-600 text-xs">Enter your song title and hit generate — you'll get campaign hooks, target audience segments, hashtags, and timing advice</p>
+            </div>
+          )}
+        </div>
+
+        {/* Release Share Card */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-violet-600/20 border border-violet-700/30 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            </div>
+            <div>
+              <h2 className="text-white font-bold">Release Share Card</h2>
+              <p className="text-gray-500 text-xs">Shareable promo card for social</p>
+            </div>
+          </div>
+
+          <button onClick={generateShareCard} disabled={!songTitle}
+            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm mb-4 transition-colors">
+            Generate Share Card
+          </button>
+
+          {shareCardVisible ? (
+            <>
+              {/* Visual card */}
+              <div className="rounded-2xl overflow-hidden mb-3 relative"
+                style={{ background: "#000", border: "1.5px solid rgba(20,184,166,0.4)" }}>
+                <div className="absolute inset-0 pointer-events-none"
+                  style={{ background: "radial-gradient(ellipse 70% 60% at 0% 0%, rgba(20,184,166,0.2) 0%, transparent 70%)" }} />
+                <div className="absolute inset-0 pointer-events-none"
+                  style={{ background: "radial-gradient(ellipse 50% 50% at 100% 100%, rgba(139,92,246,0.15) 0%, transparent 70%)" }} />
+
+                <div className="relative z-10 p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-white font-black text-sm tracking-widest">WAVR</p>
+                      <p className="text-white/25 text-[9px] tracking-[0.15em] uppercase">Artist Platform</p>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border text-teal-300 border-teal-500/40 bg-teal-500/10">
+                      {releaseType} Out Now
+                    </span>
+                  </div>
+
+                  {/* Waveform-style bars */}
+                  <div className="flex items-center gap-px mb-4" style={{ height: 32 }}>
+                    {Array.from({ length: 32 }, (_, i) => {
+                      const h = ((songTitle.charCodeAt(i % Math.max(songTitle.length, 1)) * 11 + i * 9) % 60) + 20;
+                      return (
+                        <div key={i} className="rounded-sm flex-1"
+                          style={{ height: `${h}%`, background: `rgba(20,184,166,${0.2 + (i % 5) * 0.12})`, minHeight: 3 }} />
+                      );
+                    })}
+                  </div>
+
+                  <p className="font-black leading-none mb-3 text-white truncate"
+                    style={{ fontSize: (songTitle || "New Song").length > 16 ? "1.3rem" : "1.6rem", textShadow: "0 0 28px rgba(20,184,166,0.6)" }}>
+                    {(songTitle || "New Song").toUpperCase()}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {[songGenre, userName || "Artist", ...(connectedPlatforms.slice(0, 2).map(p => p.label))].map(tag => (
+                      <span key={tag} className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/[0.06] text-white/55 border border-white/10">{tag}</span>
+                    ))}
+                  </div>
+
+                  <div className="h-px mb-4" style={{ background: "linear-gradient(to right, rgba(20,184,166,0.5), transparent)" }} />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      {connectedPlatforms.slice(0, 3).map(p => (
+                        <div key={p.key} className="w-7 h-7 rounded-lg flex items-center justify-center"
+                          style={{ background: p.bg, border: `1px solid ${p.border}` }}>
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: p.color }}>
+                            <path d={p.icon} />
+                          </svg>
+                        </div>
+                      ))}
+                      {connectedPlatforms.length === 0 && (
+                        <span className="text-gray-600 text-[10px]">Link platforms in Profile</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white"
+                      style={{ background: "linear-gradient(135deg,#0d9488,#7c3aed)", boxShadow: "0 4px 20px rgba(20,184,166,0.4)" }}>
+                      STREAM NOW
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Caption */}
+              <textarea readOnly value={shareText} rows={4}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-gray-300 text-xs resize-none font-mono mb-3 leading-relaxed" />
+
+              {/* Action buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                {"share" in navigator && (
+                  <button onClick={nativeShare}
+                    className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                    Share…
+                  </button>
+                )}
+                <button onClick={() => { const t = `"${songTitle}" ${releaseType} out now — ${songGenre}\n\n${socialLinks.spotify || socialLinks.youtube || "Link in bio"}\n\n#newmusic #${songGenre.toLowerCase().replace(/[^a-z]/g, "")} #${releaseType.toLowerCase()}`; window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}`, "_blank", "noopener"); }}
+                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                  Post on X
+                </button>
+                <button onClick={() => copyText(shareText, "sharecard")}
+                  className={`flex items-center justify-center gap-2 font-bold py-2.5 rounded-xl text-xs col-span-2 transition-all ${"share" in navigator ? "" : ""} ${copied === "sharecard" ? "bg-teal-600 text-white" : "bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600"}`}>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  {copied === "sharecard" ? "Copied!" : "Copy Caption"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-xl p-6 text-center">
+              <p className="text-gray-600 text-xs">Enter your song title above and click Generate Share Card</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Release Timing */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Best Release Times</h2>
+        <p className="text-gray-500 text-xs mb-5">When to drop for maximum platform exposure and playlist consideration</p>
+        <div className="space-y-2.5">
+          {releaseDropTimes.map((t, i) => (
+            <div key={i} className="flex items-center gap-4 bg-gray-800/50 border border-gray-700/50 rounded-xl p-4">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 ${i === 0 ? "bg-teal-600 text-white" : "bg-gray-700 text-gray-400"}`}>
+                {i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <span className="text-white font-bold text-sm">{t.day}</span>
+                  <span className="text-teal-400 text-xs font-medium bg-teal-900/30 border border-teal-700/30 px-2 py-0.5 rounded-full">{t.time}</span>
+                </div>
+                <p className="text-gray-500 text-xs">{t.note}</p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-teal-600 to-violet-600" style={{ width: `${t.score}%` }} />
+                </div>
+                <span className="text-gray-400 text-xs w-8 text-right">{t.score}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Platform Strategies */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-white font-bold mb-1">Platform Growth Strategies</h2>
+        <p className="text-gray-500 text-xs mb-5">Click any platform for a step-by-step playbook</p>
+
+        <div className="grid sm:grid-cols-3 gap-2 mb-6">
+          {strategies.map(s => (
+            <button key={s.id} onClick={() => setActiveStrategy(activeStrategy === s.id ? null : s.id)}
+              className={`text-left p-3 rounded-xl border transition-all ${activeStrategy === s.id ? "border-opacity-60 bg-opacity-20" : "bg-gray-800/50 border-gray-700 hover:border-gray-600"}`}
+              style={activeStrategy === s.id ? { borderColor: s.color, background: `${s.color}14` } : {}}>
+              <p className="text-sm font-bold" style={{ color: activeStrategy === s.id ? s.color : "#fff" }}>{s.label}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{s.steps.length} steps</p>
+            </button>
+          ))}
+        </div>
+
+        {activeStrategy && (() => {
+          const s = strategies.find(x => x.id === activeStrategy)!;
+          return (
+            <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: `${s.color}40`, background: `${s.color}08` }}>
+              <p className="font-bold text-sm" style={{ color: s.color }}>{s.label} — Step-by-Step</p>
+              {s.steps.map((step, i) => (
+                <div key={i} className="flex gap-3">
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5"
+                    style={{ background: `${s.color}20`, color: s.color, border: `1px solid ${s.color}40` }}>
+                    {i + 1}
+                  </span>
+                  <p className="text-gray-300 text-sm leading-relaxed">{step}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Playlist Pitching */}
+      <div className="bg-gradient-to-br from-teal-900/20 to-gray-900 border border-teal-700/30 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-teal-600/20 border border-teal-700/30 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
+          </div>
+          <div>
+            <h2 className="text-white font-bold">Playlist Pitching Playbook</h2>
+            <p className="text-gray-500 text-xs">How to get your music on playlists — editorial and independent</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { title: "Spotify Editorial", urgency: "7 days before release", color: "#1DB954", steps: ["Log in to Spotify for Artists", "Go to Music → Upcoming releases", "Submit the unreleased track with genre, mood, and instruments filled out", "Write a compelling pitch in the description field — be specific about the song's story", "Submit at least 7 days before your release date"] },
+            { title: "Independent Playlists", urgency: "Anytime after release", color: "#6366f1", steps: ["Use SubmitHub to find curators by genre (paid credits or free)", "Use Groover for European and mainstream curators", "Target playlists with 1K–50K followers — higher response rate than major playlists", "Personalize each pitch — mention a specific track on their playlist you connect with", "Follow up once after 2 weeks if no response"] },
+            { title: "YouTube Playlists", urgency: "After upload", color: "#FF0000", steps: ["Search YouTube for '[genre] playlist' and find active curators", "Find their channel and look for a submission email in the About section", "Message on Instagram or Twitter for faster response", "Send a short pitch: song name, genre, BPM, and why it fits their playlist", "Offer to share their playlist to your audience in exchange"] },
+          ].map(section => (
+            <div key={section.title} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white font-bold text-sm">{section.title}</p>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ color: section.color, borderColor: `${section.color}40`, background: `${section.color}15` }}>
+                  {section.urgency}
+                </span>
+              </div>
+              <ol className="space-y-2">
+                {section.steps.map((step, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-[10px] font-black w-4 shrink-0 mt-0.5" style={{ color: section.color }}>{i + 1}.</span>
+                    <p className="text-gray-400 text-xs leading-relaxed">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

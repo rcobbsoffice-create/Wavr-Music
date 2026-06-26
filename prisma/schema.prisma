@@ -1,0 +1,422 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  password         String
+  name             String
+  role             String             @default("producer")
+  plan             String             @default("free")
+  avatar           String?
+  coverImage       String?
+  themeColor       String?
+  printfulToken    String?
+  printfulStoreId  String?
+  bio              String?
+  verified         Boolean            @default(false)
+  verifyToken      String?
+  resetToken       String?
+  resetExpiry      DateTime?
+  stripeCustomerId String?
+  stripeSubId      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  suspended        Boolean            @default(false)
+  socialLinks      String?            // JSON: {twitter, instagram, youtube, soundcloud, spotify, website}
+  genres           String             @default("[]")
+  moods            String             @default("[]")
+  tagAudio         String?            // producer vocal tag file URL
+  followerCount    Int                @default(0)
+  analytics        AnalyticsEvent[]
+  beats            Beat[]
+  collabBeats      BeatCollaborator[] @relation("CollabProducer")
+  beatRequests     BeatRequest[]      @relation("BeatRequests")
+  beatRequestBids  BeatRequestBid[]   @relation("BeatRequestBids")
+  licenses         License[]
+  notifications    Notification[]
+  orders           Order[]
+  payouts          Payout[]
+  royaltyReports   RoyaltyReport[]    @relation("RoyaltyReportBuyer")
+  sessions         Session[]
+  supportTickets   SupportTicket[]
+  merchProducts    MerchProduct[]     @relation("ProducerMerch")
+  merchServices    MerchService[]     @relation("ProducerServices")
+  soundKits        SoundKit[]         @relation("ProducerSoundKits")
+  collections      Collection[]       @relation("ProducerCollections")
+  soundKitLicenses SoundKitLicense[]
+  balance          Float              @default(0)
+  lyricsNotes      LyricsNote[]       @relation("UserLyrics")
+  savedBeats       SavedBeat[]        @relation("UserSavedBeats")
+  newsPosts        NewsPost[]         @relation("AdminNewsPosts")
+}
+
+model MerchService {
+  id          String   @id @default(cuid())
+  producerId  String
+  serviceType String   // e.g., "design", "setup", "marketing"
+  status      String   @default("pending")
+  price       Float
+  details     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  producer    User     @relation("ProducerServices", fields: [producerId], references: [id])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Beat {
+  id             String             @id @default(cuid())
+  title          String
+  producerId     String
+  genre          String
+  bpm            Int
+  key            String
+  mood           String?
+  tags           String             @default("[]")
+  description    String?
+  audioFile      String?            // WAV master
+  mp3Preview     String?            // MP3 preview (lower quality)
+  stemZip        String?            // ZIP of all stems
+  artwork        String?
+  waveform       String?
+  priceBasic     Float              @default(29.99)
+  pricePremium   Float              @default(99.99)
+  priceExclusive Float              @default(299.99)
+  plays          Int                @default(0)
+  status         String             @default("active")
+  featured       Boolean            @default(false)
+  allowedUses    String             @default("[]") // ["commercial","film","tv","youtube","podcast"]
+  syncInfo       String?            // JSON: {exclusive, nonExclusive, terms}
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  analytics      AnalyticsEvent[]
+  producer       User               @relation(fields: [producerId], references: [id])
+  collaborators  BeatCollaborator[]
+  stems          BeatStem[]
+  licenses       License[]
+  royaltyReports RoyaltyReport[]
+  collections    CollectionBeat[]
+  savedBy        SavedBeat[]
+  lyricsNotes    LyricsNote[]
+}
+
+model BeatStem {
+  id        String   @id @default(cuid())
+  beatId    String
+  type      String
+  filePath  String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  beat      Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+
+  @@unique([beatId, type])
+}
+
+model BeatCollaborator {
+  id         String   @id @default(cuid())
+  beatId     String
+  producerId String
+  split      Float
+  role       String?
+  createdAt  DateTime @default(now())
+  beat       Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  producer   User     @relation("CollabProducer", fields: [producerId], references: [id])
+
+  @@unique([beatId, producerId])
+}
+
+model BeatRequest {
+  id          String           @id @default(cuid())
+  artistId    String
+  title       String
+  description String
+  genre       String?
+  bpm         String?
+  mood        String?
+  budget      Float
+  deadline    DateTime?
+  status      String           @default("open")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  artist      User             @relation("BeatRequests", fields: [artistId], references: [id])
+  bids        BeatRequestBid[]
+}
+
+model BeatRequestBid {
+  id         String      @id @default(cuid())
+  requestId  String
+  producerId String
+  message    String
+  audioDemo  String?
+  price      Float
+  status     String      @default("pending")
+  createdAt  DateTime    @default(now())
+  producer   User        @relation("BeatRequestBids", fields: [producerId], references: [id])
+  request    BeatRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model License {
+  id              String          @id @default(cuid())
+  beatId          String
+  buyerId         String
+  type            String
+  price           Float
+  terms           String?
+  downloadUrl     String?
+  stripePaymentId String?
+  createdAt       DateTime        @default(now())
+  beat            Beat            @relation(fields: [beatId], references: [id])
+  buyer           User            @relation(fields: [buyerId], references: [id])
+  royaltyReports  RoyaltyReport[]
+}
+
+model MerchProduct {
+  id          String      @id @default(cuid())
+  producerId  String?     // Optional for global merch, but links to specific producer
+  name        String
+  description String?
+  category    String
+  price       Float
+  images      String      @default("[]")
+  sizes       String      @default("[]")
+  colors      String      @default("[]")
+  printfulId  String?
+  stock       Int         @default(999)
+  status      String      @default("active")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+  producer    User?       @relation("ProducerMerch", fields: [producerId], references: [id])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  status          String      @default("pending")
+  total           Float
+  shippingAddress String
+  stripePaymentId String?
+  printfulOrderId String?
+  trackingNumber  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id        String       @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  size      String?
+  color     String?
+  price     Float
+  order     Order        @relation(fields: [orderId], references: [id])
+  product   MerchProduct @relation(fields: [productId], references: [id])
+}
+
+model Payout {
+  id               String    @id @default(cuid())
+  userId           String
+  amount           Float
+  status           String    @default("pending")
+  method           String    @default("stripe")
+  stripeTransferId String?
+  note             String?
+  requestedAt      DateTime  @default(now())
+  processedAt      DateTime?
+  user             User      @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  message   String
+  status    String   @default("open")
+  priority  String   @default("medium")
+  response  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  beatId    String?
+  type      String
+  platform  String?
+  country   String?
+  metadata  String?
+  createdAt DateTime @default(now())
+  beat      Beat?    @relation(fields: [beatId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model RoyaltyReport {
+  id         String   @id @default(cuid())
+  beatId     String
+  licenseId  String
+  buyerId    String
+  platform   String
+  trackTitle String
+  trackUrl   String?
+  streams    Int      @default(0)
+  revenue    Float    @default(0)
+  reportedAt DateTime @default(now())
+  beat       Beat     @relation(fields: [beatId], references: [id])
+  buyer      User     @relation("RoyaltyReportBuyer", fields: [buyerId], references: [id])
+  license    License  @relation(fields: [licenseId], references: [id])
+}
+
+model PromoCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  discount  Float
+  maxUses   Int?
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+model SoundKit {
+  id          String            @id @default(cuid())
+  producerId  String
+  title       String
+  description String?
+  artwork     String?
+  previewUrl  String?
+  downloadUrl String?
+  price       Float             @default(29.99)
+  tags        String            @default("[]")
+  genre       String?
+  fileCount   Int               @default(0)
+  totalSizeMb Float?
+  status      String            @default("active")
+  featured    Boolean           @default(false)
+  downloads   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  producer    User              @relation("ProducerSoundKits", fields: [producerId], references: [id])
+  licenses    SoundKitLicense[]
+}
+
+model SoundKitLicense {
+  id              String    @id @default(cuid())
+  soundKitId      String
+  buyerId         String
+  price           Float
+  stripePaymentId String?
+  createdAt       DateTime  @default(now())
+  soundKit        SoundKit  @relation(fields: [soundKitId], references: [id])
+  buyer           User      @relation(fields: [buyerId], references: [id])
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  producerId  String
+  title       String
+  description String?
+  artwork     String?
+  price       Float            @default(49.99)
+  tags        String           @default("[]")
+  genre       String?
+  status      String           @default("active")
+  featured    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  producer    User             @relation("ProducerCollections", fields: [producerId], references: [id])
+  beats       CollectionBeat[]
+}
+
+model CollectionBeat {
+  id           String     @id @default(cuid())
+  collectionId String
+  beatId       String
+  order        Int        @default(0)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  beat         Beat       @relation(fields: [beatId], references: [id])
+
+  @@unique([collectionId, beatId])
+}
+
+model LyricsNote {
+  id        String   @id @default(cuid())
+  userId    String
+  beatId    String?
+  title     String   @default("Untitled")
+  content   String   @default("")
+  tags      String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("UserLyrics", fields: [userId], references: [id], onDelete: Cascade)
+  beat      Beat?    @relation(fields: [beatId], references: [id], onDelete: SetNull)
+}
+
+model SavedBeat {
+  id        String   @id @default(cuid())
+  userId    String
+  beatId    String
+  createdAt DateTime @default(now())
+  user      User     @relation("UserSavedBeats", fields: [userId], references: [id], onDelete: Cascade)
+  beat      Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, beatId])
+}
+
+model NewsPost {
+  id        String   @id @default(cuid())
+  title     String
+  excerpt   String
+  content   String
+  category  String   @default("News")
+  image     String?
+  authorId  String
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation("AdminNewsPosts", fields: [authorId], references: [id])
+}
+
+model SiteSettings {
+  id           String   @id @default("singleton")
+  siteName     String   @default("WAVR")
+  siteTagline  String   @default("The Beat Marketplace")
+  logoUrl      String?
+  faviconUrl   String?
+  seoTitle     String?
+  seoDesc      String?
+  updatedAt    DateTime @updatedAt
+}

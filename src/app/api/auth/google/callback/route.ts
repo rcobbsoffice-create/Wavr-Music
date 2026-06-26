@@ -4,7 +4,7 @@ import { signToken } from "@/lib/jwt";
 import { getDashboardPath } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").trim();
   const redirectUri = `${baseUrl}/api/auth/google/callback`;
 
   const code = req.nextUrl.searchParams.get("code");

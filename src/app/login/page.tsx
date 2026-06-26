@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -13,20 +13,23 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   suspended: "Your account has been suspended. Contact support.",
 };
 
+function OAuthErrorReader({ onError }: { onError: (msg: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) onError(GOOGLE_ERROR_MESSAGES[oauthError] ?? "Sign-in failed.");
+  }, [searchParams, onError]);
+  return null;
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-
-  useEffect(() => {
-    const oauthError = searchParams.get("error");
-    if (oauthError) setError(GOOGLE_ERROR_MESSAGES[oauthError] ?? "Sign-in failed.");
-  }, [searchParams]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -70,6 +73,10 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+          <Suspense>
+            <OAuthErrorReader onError={setError} />
+          </Suspense>
+
           <h1 className="text-white font-bold text-2xl mb-6">Welcome back</h1>
 
           {error && (

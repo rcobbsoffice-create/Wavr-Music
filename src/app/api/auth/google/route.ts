@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/api/auth/google/callback`;
 
   if (!clientId) {
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 });
   }
+
+  // Optional role hint passed from signup page (producer | artist)
+  const role = req.nextUrl.searchParams.get("role");
+  const state = role === "producer" || role === "artist" ? role : "";
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -15,6 +19,7 @@ export async function GET() {
     scope: "openid email profile",
     access_type: "offline",
     prompt: "select_account",
+    ...(state && { state }),
   });
 
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);

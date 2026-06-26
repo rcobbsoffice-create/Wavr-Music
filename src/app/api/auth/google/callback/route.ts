@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
 
     const email = profile.email.toLowerCase().trim();
 
+    // Role hint passed via OAuth state param (from signup page)
+    const stateRole = req.nextUrl.searchParams.get("state");
+    const roleHint = stateRole === "producer" || stateRole === "artist" ? stateRole : null;
+
     // Existing user — log them straight in
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -74,7 +78,43 @@ export async function GET(req: NextRequest) {
       return res;
     }
 
-    // New user — store Google profile in a temp cookie and ask them to pick a role
+    // New user — if we have a role hint, create account immediately
+    if (roleHint) {
+      const { default: bcrypt } = await import("bcryptjs");
+      const randomPassword = await bcrypt.hash(crypto.randomUUID(), 10);
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          name: profile.name ?? email.split("@")[0],
+          password: randomPassword,
+          role: roleHint,
+          verified: true,
+          avatar: profile.picture ?? null,
+        },
+      });
+
+      const token = signToken({ userId: newUser.id, role: newUser.role, email: newUser.email });
+      const res = NextResponse.redirect(`${baseUrl}${getDashboardPath(newUser.role)}`);
+
+      res.cookies.set("wavr-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      res.cookies.set("wavr-role", newUser.role, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
+      return res;
+    }
+
+    // New user, no role hint — store profile in temp cookie and show role picker
     const pending = JSON.stringify({
       email,
       name: profile.name ?? email.split("@")[0],
@@ -87,7 +127,7 @@ export async function GET(req: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 10, // 10 minutes to complete
+      maxAge: 60 * 10,
     });
 
     return res;

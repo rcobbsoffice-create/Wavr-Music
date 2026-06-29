@@ -154,16 +154,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials helper */}
-          <div className="mt-5 p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
-            <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Demo Accounts</p>
-            <div className="space-y-1 text-xs text-gray-500">
-              <p><span className="text-blue-400 font-medium">Admin:</span> admin@wavr.com / admin123</p>
-              <p><span className="text-blue-400 font-medium">Producer:</span> mrbeatz@wavr.com / MrBeatz2024!</p>
-              <p><span className="text-teal-400 font-medium">Artist:</span> artist@wavr.com / Artist2024!</p>
-            </div>
-          </div>
-
           <p className="mt-5 text-center text-gray-500 text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">

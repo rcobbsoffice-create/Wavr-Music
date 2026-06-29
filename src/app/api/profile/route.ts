@@ -56,10 +56,14 @@ export async function PATCH(req: NextRequest) {
         const buf = Buffer.from(await coverFile.arrayBuffer());
         data.coverImage = await saveUploadedFile(buf, coverFile.name, "covers");
       }
-      const tagFile = form.get("tagAudio") as File | null;
-      if (tagFile && tagFile.size > 0) {
-        const buf = Buffer.from(await tagFile.arrayBuffer());
-        data.tagAudio = await saveUploadedFile(buf, tagFile.name, "tags");
+      if (form.get("removeTagAudio") === "true") {
+        data.tagAudio = null;
+      } else {
+        const tagFile = form.get("tagAudio") as File | null;
+        if (tagFile && tagFile.size > 0) {
+          const buf = Buffer.from(await tagFile.arrayBuffer());
+          data.tagAudio = await saveUploadedFile(buf, tagFile.name, "tags");
+        }
       }
       const socialLinks = form.get("socialLinks") as string | null;
       if (socialLinks) { try { JSON.parse(socialLinks); data.socialLinks = socialLinks; } catch {} }

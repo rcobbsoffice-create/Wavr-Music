@@ -803,6 +803,7 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [tagAudioFile, setTagAudioFile] = useState<File | null>(null);
   const [currentTagAudio, setCurrentTagAudio] = useState<string | null>(null);
+  const [removeTagAudio, setRemoveTagAudio] = useState(false);
   const [socialLinks, setSocialLinks] = useState({ twitter: "", instagram: "", youtube: "", soundcloud: "", spotify: "", website: "" });
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -838,14 +839,19 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
       fd.append("moods", JSON.stringify(selectedMoods));
       if (avatarFile) fd.append("avatar", avatarFile);
       if (coverFile) fd.append("coverImage", coverFile);
-      if (tagAudioFile) fd.append("tagAudio", tagAudioFile);
+      if (removeTagAudio) {
+        fd.append("removeTagAudio", "true");
+      } else if (tagAudioFile) {
+        fd.append("tagAudio", tagAudioFile);
+      }
 
       const res = await fetch("/api/profile", { method: "PATCH", body: fd });
       const data = await res.json();
       if (!res.ok) { setMsg(data.error ?? "Failed to save"); return; }
       setMsg("Profile updated successfully.");
       setAvatarFile(null); setCoverFile(null); setTagAudioFile(null);
-      if (data.tagAudio) setCurrentTagAudio(data.tagAudio);
+      if (removeTagAudio) { setCurrentTagAudio(null); setRemoveTagAudio(false); }
+      else if (data.tagAudio) setCurrentTagAudio(data.tagAudio);
     } catch { setMsg("Network error."); }
     finally { setSaving(false); }
   }
@@ -889,17 +895,32 @@ function ProducerSettings({ userName, userEmail, userPlan }: { userName?: string
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
               <h2 className="text-white font-bold">Producer Tag (Watermark)</h2>
               <p className="text-gray-500 text-xs leading-relaxed">Upload your vocal tag (.mp3 or .wav). It overlays every 8 seconds during beat previews so your tag is always heard.</p>
-              {currentTagAudio && (
-                <div className="space-y-1">
+              {currentTagAudio && !removeTagAudio && (
+                <div className="space-y-2">
                   <p className="text-green-400 text-xs font-medium">✓ Tag active</p>
                   <audio src={currentTagAudio} controls className="w-full h-8" />
+                  <button
+                    type="button"
+                    onClick={() => { setRemoveTagAudio(true); setTagAudioFile(null); }}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Remove tag
+                  </button>
                 </div>
               )}
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1">{currentTagAudio ? "Replace Tag Audio" : "Upload Tag Audio"}</label>
-                <input type="file" accept="audio/*" onChange={e => setTagAudioFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-gray-800 file:text-gray-300" />
-              </div>
+              {removeTagAudio && (
+                <div className="flex items-center gap-2">
+                  <p className="text-red-400 text-xs">Tag will be removed on save.</p>
+                  <button type="button" onClick={() => setRemoveTagAudio(false)} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Undo</button>
+                </div>
+              )}
+              {!removeTagAudio && (
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1">{currentTagAudio ? "Replace Tag Audio" : "Upload Tag Audio"}</label>
+                  <input type="file" accept="audio/*" onChange={e => setTagAudioFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-gray-800 file:text-gray-300" />
+                </div>
+              )}
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h2 className="text-white font-bold mb-3">Current Plan</h2>

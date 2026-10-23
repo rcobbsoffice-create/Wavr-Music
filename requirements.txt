@@ -6,3 +6,4 @@ werkzeug
 gunicorn
 huggingface_hub
 requests
+boto3

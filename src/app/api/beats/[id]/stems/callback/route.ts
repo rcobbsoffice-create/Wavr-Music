@@ -6,6 +6,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Only the stems worker may report results (it sends WORKER_SECRET)
+  const secret = (process.env.WORKER_SECRET ?? "").trim();
+  if (secret && req.headers.get("x-worker-secret") !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   
   try {
     const body = await req.json();

@@ -9,14 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@base-ui/react": "^1.4.1",
     "@eslint/eslintrc": "^3.3.5",
-    "@huggingface/hub": "^2.11.2",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-slot": "^1.2.4",
     "@stripe/react-stripe-js": "^6.6.0",
     "@stripe/stripe-js": "^9.7.0",
-    "@supabase/supabase-js": "^2.105.0",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

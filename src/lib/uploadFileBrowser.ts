@@ -1,26 +1,26 @@
 "use client";
 
-import { uploadFile as hfUploadFile } from "@huggingface/hub";
-
-const HF_REPO = (process.env.NEXT_PUBLIC_HF_REPO || "ipdevgroup/wavr-music-storage").trim();
-const HF_TOKEN = (process.env.NEXT_PUBLIC_HF_TOKEN || "").trim();
-
-export async function uploadAudioToHuggingFace(file: File, subfolder: string): Promise<string> {
-  if (!HF_TOKEN) throw new Error("HuggingFace token not configured (NEXT_PUBLIC_HF_TOKEN)");
-
-  const ext = file.name.split(".").pop() || "bin";
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const storagePath = `${subfolder}/${filename}`;
-
-  await hfUploadFile({
-    repo: { type: "dataset", name: HF_REPO },
-    credentials: { accessToken: HF_TOKEN },
-    file: {
-      path: storagePath,
-      content: file,
-    },
-    commitTitle: `Upload ${subfolder} file`,
+/**
+ * Upload a file from the browser straight to storage.
+ * The server hands out a short-lived signed PUT URL, so no storage
+ * credentials are ever shipped to the browser.
+ * Returns the app URL to save on the record (e.g. "/api/files/beats/....wav").
+ */
+export async function uploadToStorage(file: File, folder: string): Promise<string> {
+  const res = await fetch("/api/upload/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: file.name, folder, size: file.size }),
   });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Upload could not start (${res.status})`);
 
-  return `https://huggingface.co/datasets/${HF_REPO}/resolve/main/${storagePath}`;
+  const put = await fetch(data.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": data.contentType },
+    body: file,
+  });
+  if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+
+  return data.url as string;
 }

@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { usePlayer } from "@/components/PlayerContext";
-import { supabase } from "@/lib/supabaseClient";
-import { uploadAudioToHuggingFace } from "@/lib/uploadFileBrowser";
+import { uploadToStorage } from "@/lib/uploadFileBrowser";
 import { DropZone } from "@/components/DropZone";
 
 const genreGradients: Record<string, string> = {
@@ -1811,7 +1810,7 @@ export default function ProducerDashboard() {
 
       if (uploadFile) {
         try {
-          finalAudioUrl = await uploadAudioToHuggingFace(uploadFile, "beats");
+          finalAudioUrl = await uploadToStorage(uploadFile, "beats");
         } catch (err: any) {
           setUploadError(`Audio upload failed: ${err.message}`);
           return;
@@ -1820,14 +1819,12 @@ export default function ProducerDashboard() {
 
       let finalArtworkUrl = "";
       if (editArtworkFile) {
-        const ext = editArtworkFile.name.split(".").pop();
-        const filePath = `artwork/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: artErr } = await supabase.storage.from("wavr-uploads").upload(filePath, editArtworkFile);
-        if (!artErr) {
-          const { data: { publicUrl } } = supabase.storage.from("wavr-uploads").getPublicUrl(filePath);
-          finalArtworkUrl = publicUrl;
+        try {
+          finalArtworkUrl = await uploadToStorage(editArtworkFile, "artwork");
+        } catch {
+          // Artwork is optional; continue without it
         }
-      } else if (editArtworkPreview && editArtworkPreview.startsWith("http")) {
+      } else if (editArtworkPreview && (editArtworkPreview.startsWith("http") || editArtworkPreview.startsWith("/api/files/"))) {
         finalArtworkUrl = editArtworkPreview;
       }
 
@@ -1902,16 +1899,13 @@ export default function ProducerDashboard() {
       let finalArtworkUrl = editArtworkPreview;
 
       if (editArtworkFile) {
-        const ext = editArtworkFile.name.split(".").pop();
-        const filePath = `artworks/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: artErr } = await supabase.storage.from("wavr-uploads").upload(filePath, editArtworkFile);
-        if (artErr) {
-          setEditError(`Artwork upload failed: ${artErr.message}`);
+        try {
+          finalArtworkUrl = await uploadToStorage(editArtworkFile, "artwork");
+        } catch (artErr) {
+          setEditError(`Artwork upload failed: ${artErr instanceof Error ? artErr.message : "unknown error"}`);
           setEditSaving(false);
           return;
         }
-        const { data: { publicUrl } } = supabase.storage.from("wavr-uploads").getPublicUrl(filePath);
-        finalArtworkUrl = publicUrl;
       }
 
       const res = await fetch(`/api/beats/${editBeat.id}`, {
@@ -2990,8 +2984,8 @@ export default function ProducerDashboard() {
                       setDetectingBpm(true);
                       setDetectError("");
                       try {
-                        // Upload directly from browser to HuggingFace, then send URL to analyze API
-                        const hfUrl = await uploadAudioToHuggingFace(uploadFile, "temp-analyze");
+                        // Upload directly from browser to storage, then send URL to analyze API
+                        const hfUrl = await uploadToStorage(uploadFile, "temp-analyze");
                         const res = await fetch("/api/beats/analyze", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },

@@ -132,7 +132,30 @@ def process():
             _hf_available = False
             print("[Worker] huggingface_hub not installed — skipping HF uploads")
 
+        def upload_to_s3(local_path, key):
+            """Upload to WAVR's S3-compatible storage (MinIO/R2). Returns the app URL."""
+            import boto3
+            from botocore.config import Config
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=os.environ["S3_ENDPOINT"],
+                region_name=os.environ.get("S3_REGION", "us-east-1"),
+                aws_access_key_id=os.environ["S3_ACCESS_KEY_ID"],
+                aws_secret_access_key=os.environ["S3_SECRET_ACCESS_KEY"],
+                config=Config(s3={"addressing_style": "path" if os.environ.get("S3_FORCE_PATH_STYLE", "true") != "false" else "auto"}),
+            )
+            print(f"[Worker] Uploading {key} to S3 bucket {os.environ['S3_BUCKET']}...")
+            try:
+                s3.upload_file(local_path, os.environ["S3_BUCKET"], key, ExtraArgs={"ContentType": "audio/wav"})
+                return f"/api/files/{key}"
+            except Exception as e:
+                print(f"[Worker] S3 upload error: {e}")
+                return None
+
         def upload_to_hf(local_path, hf_path):
+            # Prefer WAVR's own storage when configured
+            if os.environ.get("S3_ENDPOINT") and os.environ.get("S3_BUCKET"):
+                return upload_to_s3(local_path, hf_path)
             if not _hf_available:
                 return None
             repo_id = os.environ.get("HF_DATASET_REPO")
@@ -201,7 +224,7 @@ def process():
         if callback_url and stems:
             print(f"[Worker] Sending URLs to callback: {callback_url}")
             try:
-                requests.post(callback_url, json={
+                requests.post(callback_url, headers={"x-worker-secret": os.environ.get("WORKER_SECRET", "")}, json={
                     "beatId": beat_id,
                     "originalWavUrl": original_wav_url,
                     "stems": hf_urls

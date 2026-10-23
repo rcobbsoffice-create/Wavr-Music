@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/apiAuth";
+import { toFetchableUrl } from "@/lib/storage";
 
 const STEMS_URL = (process.env.STEMS_WORKER_URL ?? "http://localhost:7860").trim();
 
@@ -52,7 +53,8 @@ export async function POST(req: NextRequest) {
 
   try {
     console.log("[analyze] audioUrl received:", JSON.stringify(audioUrl));
-    const stemsEndpoint = `${STEMS_URL}/analyze?url=${encodeURIComponent(audioUrl)}`;
+    const fetchable = await toFetchableUrl(audioUrl);
+    const stemsEndpoint = `${STEMS_URL}/analyze?url=${encodeURIComponent(fetchable)}`;
     console.log("[analyze] calling", stemsEndpoint);
     const res = await fetch(stemsEndpoint, {
       method: "POST",

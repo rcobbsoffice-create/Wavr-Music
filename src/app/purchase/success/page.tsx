@@ -4,9 +4,55 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
+// Shown when Stripe redirects back after a wallet top-up (?type=wallet&payment_intent=pi_...)
+function WalletTopUpResult({ paymentIntentId }: { paymentIntentId: string | null }) {
+  const [state, setState] = useState<{ status: "loading" | "done" | "pending" | "error"; balance?: number; error?: string }>({ status: "loading" });
+
+  useEffect(() => {
+    if (!paymentIntentId) { setState({ status: "error", error: "Missing payment reference." }); return; }
+    fetch("/api/wallet/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId }),
+    })
+      .then(async (r) => ({ ok: r.ok, data: await r.json() }))
+      .then(({ ok, data }) => {
+        if (ok && data.ok) setState({ status: "done", balance: data.balance });
+        else if (ok && data.pending) setState({ status: "pending" });
+        else setState({ status: "error", error: data.error });
+      })
+      .catch(() => setState({ status: "error", error: "Network error." }));
+  }, [paymentIntentId]);
+
+  const heading = state.status === "done" ? "Funds Added!" : state.status === "pending" ? "Payment Processing" : state.status === "error" ? "Almost There" : "Adding Funds…";
+  const body = state.status === "done"
+    ? `Your wallet balance is now $${(state.balance ?? 0).toFixed(2)}.`
+    : state.status === "pending"
+      ? "Your payment is still clearing. Your balance will update automatically."
+      : state.status === "error"
+        ? `We couldn't confirm the top-up yet (${state.error ?? "unknown error"}). If you were charged, it will be added automatically.`
+        : "Confirming your payment with Stripe.";
+
+  return (
+    <div className="relative text-center max-w-md w-full">
+      <h1 className="text-3xl font-black text-white mb-2">{heading}</h1>
+      <p className="text-gray-400 mb-8 leading-relaxed">{body}</p>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Link href="/dashboard" className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">Go to Dashboard</Link>
+        <Link href="/marketplace" className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-semibold px-6 py-3 rounded-xl transition-colors">Back to Marketplace</Link>
+      </div>
+    </div>
+  );
+}
+
 function PurchaseSuccessContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("session_id");
+  const isWallet = searchParams.get("type") === "wallet";
+  if (isWallet) return <WalletTopUpResult paymentIntentId={searchParams.get("payment_intent")} />;
+  return <LicensePurchaseResult sessionId={searchParams.get("session_id")} />;
+}
+
+function LicensePurchaseResult({ sessionId }: { sessionId: string | null }) {
   const [dots, setDots] = useState(".");
 
   // Animate the dots to give a sense of processing

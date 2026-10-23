@@ -9,6 +9,24 @@ const stripePromise = pk ? loadStripe(pk) : null;
 
 const PRESETS = [10, 25, 50, 100];
 
+// Ask the server to credit a confirmed PaymentIntent and return the new balance.
+// The server re-checks the intent with Stripe, so the client can't fake a credit.
+async function confirmTopUp(paymentIntentId: string): Promise<{ balance?: number; pending?: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/wallet/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error ?? "Could not update your balance" };
+    if (data.pending) return { pending: true };
+    return { balance: data.balance };
+  } catch {
+    return { error: "Network error while updating your balance" };
+  }
+}
+
 interface SavedCard { id: string; brand: string; last4: string; expMonth?: number; expYear?: number; }
 
 function brandIcon(brand: string) {
@@ -42,10 +60,16 @@ function NewCardForm({ amount, onSuccess, onCancel }: {
 
     if (stripeError) { setError(stripeError.message ?? "Payment failed"); setProcessing(false); return; }
 
-    if (paymentIntent?.status === "succeeded") {
-      const res = await fetch("/api/wallet");
-      const data = await res.json();
-      onSuccess(data.balance ?? 0);
+    if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")) {
+      const result = await confirmTopUp(paymentIntent.id);
+      if (result.balance !== undefined) { onSuccess(result.balance); return; }
+      if (result.pending) {
+        setError("Payment is processing. Your balance will update once it clears.");
+      } else {
+        setError(`Payment went through, but ${result.error?.toLowerCase() ?? "the balance didn't refresh"}. It will be added automatically. Refresh in a minute.`);
+      }
+    } else if (paymentIntent) {
+      setError(`Payment not completed (${paymentIntent.status}). You were not charged.`);
     }
     setProcessing(false);
   }
@@ -109,10 +133,19 @@ export default function WalletTopUpModal({ onClose, onSuccess, initialAmount }: 
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Charge failed"); return; }
       if (data.ok) { onSuccess(data.balance); onClose(); return; }
-      // 3D Secure required — fall through to Elements for confirmation
+      // 3D Secure required: let Stripe show the bank's challenge, then credit
       if (data.requiresAction && data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setShowNewCard(true);
+        const stripe = stripePromise ? await stripePromise : null;
+        if (!stripe) { setError("Payment not configured. Contact support."); return; }
+        const { error: actionError, paymentIntent } = await stripe.handleNextAction({ clientSecret: data.clientSecret });
+        if (actionError) { setError(actionError.message ?? "Card authentication failed"); return; }
+        if (paymentIntent?.status === "succeeded") {
+          const result = await confirmTopUp(paymentIntent.id);
+          if (result.balance !== undefined) { onSuccess(result.balance); onClose(); return; }
+          setError(result.error ?? "Payment went through. Your balance will update shortly.");
+          return;
+        }
+        setError("Card authentication was not completed. You were not charged.");
       }
     } catch { setError("Network error. Try again."); }
     finally { setCharging(null); }

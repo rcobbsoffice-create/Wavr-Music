@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
       amount: Math.round(amountNum * 100),
       currency: "usd",
       customer: customerId,
+      payment_method_types: ["card"],
       setup_future_usage: "off_session", // saves card after payment
       metadata: { userId: user.id, type: "wallet_topup", amount: amountNum.toString() },
     });
-    return NextResponse.json({ clientSecret: intent.client_secret });
+    return NextResponse.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Stripe error";
     return NextResponse.json({ error: msg }, { status: 500 });

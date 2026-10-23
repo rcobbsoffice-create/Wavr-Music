@@ -55,6 +55,7 @@ model User {
   collections      Collection[]       @relation("ProducerCollections")
   soundKitLicenses SoundKitLicense[]
   balance          Float              @default(0)
+  walletTransactions WalletTransaction[]
   lyricsNotes      LyricsNote[]       @relation("UserLyrics")
   savedBeats       SavedBeat[]        @relation("UserSavedBeats")
   newsPosts        NewsPost[]         @relation("AdminNewsPosts")
@@ -419,4 +420,19 @@ model SiteSettings {
   seoTitle     String?
   seoDesc      String?
   updatedAt    DateTime @updatedAt
+}
+
+// Ledger of wallet credits. The unique stripePaymentId makes Stripe top-ups
+// idempotent: the webhook, the saved-card charge and the client confirm call
+// can all race to credit the same PaymentIntent, and only one wins.
+model WalletTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Float
+  type            String   // "topup"
+  stripePaymentId String?  @unique
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

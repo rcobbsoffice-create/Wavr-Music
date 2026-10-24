@@ -4,7 +4,7 @@ import path from "path";
 
 /**
  * File storage for WAVR, on any S3-compatible service:
- *   - MinIO running on your own VPS (Coolify one-click service), or
+ *   - Garage running on your own VPS, or
  *   - Cloudflare R2 / Backblaze B2 / AWS S3.
  *
  * The bucket stays PRIVATE. Files are referenced in the database as
@@ -13,12 +13,12 @@ import path from "path";
  * and no storage credentials ever reach the browser.
  *
  * Env:
- *   S3_ENDPOINT          e.g. https://minio-api.ipserver.app  or  https://<acct>.r2.cloudflarestorage.com
- *   S3_REGION            "us-east-1" for MinIO, "auto" for R2
+ *   S3_ENDPOINT          e.g. https://s3.ipserver.app  or  https://<acct>.r2.cloudflarestorage.com
+ *   S3_REGION            "garage" for Garage, "auto" for R2
  *   S3_BUCKET            e.g. wavr
  *   S3_ACCESS_KEY_ID
  *   S3_SECRET_ACCESS_KEY
- *   S3_FORCE_PATH_STYLE  "true" for MinIO (default true)
+ *   S3_FORCE_PATH_STYLE  "true" for Garage (default true)
  */
 
 export const FILE_ROUTE_PREFIX = "/api/files/";

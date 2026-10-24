@@ -6,7 +6,7 @@
 |---|---|---|
 | Web app (Next.js) | Vercel | Coolify app on ipserver.app, built from `Dockerfile.web` |
 | Database | Supabase Postgres | Postgres 17 in Coolify (same server) |
-| Images (artwork, avatars, merch) | Supabase Storage | S3-compatible bucket (**Cloudflare R2** recommended, or MinIO in Coolify) |
+| Images (artwork, avatars, merch) | Supabase Storage | S3-compatible bucket (**Cloudflare R2** recommended, or Garage self-hosted) |
 | Audio (beats, stems, kits) | Hugging Face dataset | Same bucket as images |
 | Stems worker (Demucs) | Hugging Face Space | **Stays on the HF Space** (it needs more RAM than the VPS can spare) — it now saves stems to the bucket |
 
@@ -14,12 +14,14 @@ The app stores files as `/api/files/<key>` links. That route hands the browser a
 1-hour signed URL, so the bucket stays private and audio streams straight from
 storage instead of through the 4 GB server.
 
-### Why R2 instead of MinIO for files
-Both work with no code changes (same `S3_*` env vars). R2 is recommended because
+### Why R2 instead of self-hosting files
+Any S3-compatible store works with no code changes (same `S3_*` env vars).
+Don't use MinIO: its free edition stopped shipping Docker images in Oct 2025
+and the project was archived in Apr 2026. For self-hosting use **Garage**. R2 is recommended because
 the VPS already runs Coolify, Appwrite and Crypto Radar on 4 GB RAM, audio
 libraries grow fast, and R2 has no download/egress fees (10 GB free, then about
-$0.015/GB-month). Choose MinIO if you want literally everything on your box and
-have plenty of disk.
+$0.015/GB-month). Choose Garage if you want everything on your own box and have plenty of disk
+(plus an off-server backup).
 
 ---
 
@@ -54,10 +56,11 @@ have plenty of disk.
    ```
    Env values: `S3_REGION=auto`, `S3_FORCE_PATH_STYLE=false`.
 
-**Or MinIO on the VPS**
-1. Coolify → **+ New → Service → MinIO**. Give the API a domain, e.g. `minio-api.ipserver.app`.
-2. Log into the console, create bucket `wavr` (private) and an access key.
-   Env values: `S3_ENDPOINT=https://minio-api.ipserver.app`, `S3_REGION=us-east-1`, `S3_FORCE_PATH_STYLE=true`.
+**Or Garage on the VPS (self-hosted)**
+Run Garage as a Docker Compose service in Coolify with its S3 API on a domain such as
+`s3.ipserver.app`, create bucket `wavr` and an access key with `garage bucket create` /
+`garage key create`, and allow CORS for your site. Env values:
+`S3_ENDPOINT=https://s3.ipserver.app`, `S3_REGION=garage`, `S3_FORCE_PATH_STYLE=true`.
 
 ## 3. The app in Coolify
 1. **+ New → Application → GitHub** → `rcobbsoffice-create/Wavr-Music`, branch with these changes.

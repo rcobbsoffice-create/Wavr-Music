@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Copy every file the database points at from Supabase Storage and the
- * Hugging Face dataset into WAVR's S3-compatible storage (MinIO / R2),
+ * Hugging Face dataset into WAVR's S3-compatible storage (R2 / Garage),
  * then rewrite those URLs in the database to "/api/files/<key>".
  *
  * Run it AFTER the database itself has been copied to the new Postgres.

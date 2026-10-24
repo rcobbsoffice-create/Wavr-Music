@@ -133,7 +133,7 @@ def process():
             print("[Worker] huggingface_hub not installed — skipping HF uploads")
 
         def upload_to_s3(local_path, key):
-            """Upload to WAVR's S3-compatible storage (MinIO/R2). Returns the app URL."""
+            """Upload to WAVR's S3-compatible storage (R2/Garage). Returns the app URL."""
             import boto3
             from botocore.config import Config
             s3 = boto3.client(

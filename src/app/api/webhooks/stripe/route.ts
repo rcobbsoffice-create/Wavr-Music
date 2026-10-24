@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
+import { creditWalletTopUp } from "@/lib/wallet";
 
 // Disable body parsing so we can verify the raw Stripe signature
 export const runtime = "nodejs";
@@ -26,14 +27,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Wallet top-up via Payment Intent
+  // Idempotent: the charge route or /api/wallet/confirm may already have credited it.
   if (event.type === "payment_intent.succeeded") {
     const intent = event.data.object as Stripe.PaymentIntent;
-    if (intent.metadata?.type === "wallet_topup") {
-      const { userId, amount } = intent.metadata;
-      await prisma.user.update({
-        where: { id: userId },
-        data: { balance: { increment: parseFloat(amount) } },
-      }).catch((err) => console.error("[Webhook] wallet top-up DB error:", err));
+    try {
+      const result = await creditWalletTopUp(intent);
+      if (result.status === "credited") {
+        console.log(`[Stripe webhook] Wallet top-up credited for ${intent.metadata.userId} (${intent.id})`);
+      }
+    } catch (err) {
+      console.error("[Stripe webhook] wallet top-up DB error:", err);
+      // Non-2xx makes Stripe retry later instead of silently losing the credit
+      return NextResponse.json({ error: "DB write failed" }, { status: 500 });
     }
   }
 

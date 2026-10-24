@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/apiAuth";
-import { supabase } from "@/lib/supabaseClient";
+import { putObject } from "@/lib/storage";
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
@@ -27,22 +27,11 @@ export async function POST(req: NextRequest) {
     const imageBlob = await imageRes.blob();
     const buffer = Buffer.from(await imageBlob.arrayBuffer());
 
-    // Upload to Supabase Storage
-    const fileName = `artwork/${user.id}/${Date.now()}.jpg`;
-    const { data, error: uploadError } = await supabase.storage
-      .from('beats')
-      .upload(fileName, buffer, {
-        contentType: 'image/jpeg',
-        upsert: true
-      });
+    // Save to storage
+    const key = `artwork/${user.id}/${Date.now()}.jpg`;
+    const imageUrlStored = await putObject(key, buffer, "image/jpeg");
 
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('beats')
-      .getPublicUrl(fileName);
-
-    return NextResponse.json({ imageUrl: publicUrl });
+    return NextResponse.json({ imageUrl: imageUrlStored });
 
   } catch (err) {
     console.error("[Artwork Generation] Error:", err);

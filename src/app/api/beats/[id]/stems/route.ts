@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { toFetchableUrl } from "@/lib/storage";
 import { getAuthUser } from "@/lib/apiAuth";
 
 const STEM_TYPES = ["drums", "bass", "melody", "other"] as const;
@@ -81,10 +82,9 @@ export async function POST(
   }
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://wavr-music.vercel.app";
-    const audioUrl = beat.audioFile?.startsWith("http")
-      ? beat.audioFile
-      : `${appUrl}${beat.audioFile}`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+    // Our stored files become signed URLs the worker can download directly
+    const audioUrl = await toFetchableUrl(beat.audioFile ?? "");
 
     const resp = await fetch(`${workerUrl}/process`, {
       method: "POST",

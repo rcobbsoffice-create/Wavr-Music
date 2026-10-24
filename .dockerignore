@@ -8,3 +8,6 @@ __pycache__
 .env.local
 .vscode
 .idea
+server_log.txt
+test-db*.ts
+tsconfig.tsbuildinfo

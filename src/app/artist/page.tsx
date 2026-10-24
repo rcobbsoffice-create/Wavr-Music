@@ -491,7 +491,7 @@ export default function ArtistPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="bg-green-600/20 border border-green-600/40 text-green-400 text-xs font-bold px-2.5 py-1 rounded-lg capitalize">{lic.type}</span>
                     {lic.downloadUrl && (
-                      <a href={lic.downloadUrl} className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800/30 px-3 py-1.5 rounded-lg transition-colors" download>Download</a>
+                      <a href={lic.downloadUrl.startsWith("/api/files/") ? `${lic.downloadUrl}?download=1` : lic.downloadUrl} className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800/30 px-3 py-1.5 rounded-lg transition-colors" download>Download</a>
                     )}
                   </div>
                 </div>

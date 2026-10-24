@@ -1,30 +1,65 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Beat } from "@/lib/mockData";
 
-const genreGradients: Record<string, string> = {
-  Trap: "from-blue-900 via-gray-900 to-black",
-  "R&B": "from-gray-800 via-gray-900 to-black",
-  Afrobeats: "from-blue-800 via-gray-900 to-black",
-  Drill: "from-gray-800 via-slate-900 to-black",
-  Pop: "from-gray-900 via-gray-950 to-black",
-  "Hip-Hop": "from-blue-950 via-gray-900 to-black",
+// Fallback cover colours per genre (base, ring) when a beat has no artwork
+export const genreCover: Record<string, [string, string]> = {
+  Trap: ["#2B1B4E", "#7C5CFF"],
+  "R&B": ["#3A1F2B", "#FF6B8A"],
+  Drill: ["#13283A", "#3DD6FF"],
+  Afrobeats: ["#3A2A12", "#FFB23D"],
+  Pop: ["#16302A", "#3DFFB0"],
+  "Hip-Hop": ["#1B2340", "#8FA3FF"],
 };
+const defaultCover: [string, string] = ["#1C1C25", "#C6FF3D"];
+
+export function BeatCover({ beat, className = "" }: { beat: Beat; className?: string }) {
+  const [base, ring] = genreCover[beat.genre] ?? defaultCover;
+  return (
+    <div className={`overflow-hidden ${/\b(absolute|fixed)\b/.test(className) ? "" : "relative"} ${className}`} style={{ background: base }}>
+      {beat.artwork ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={beat.artwork} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        <svg viewBox="0 0 100 100" fill="none" stroke={ring} strokeWidth="1.5" aria-hidden="true" className="absolute inset-0 w-full h-full">
+          <circle cx="78" cy="22" r="14" />
+          <circle cx="78" cy="22" r="26" />
+          <circle cx="78" cy="22" r="38" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+export function PlayIcon({ playing, className = "w-5 h-5" }: { playing: boolean; className?: string }) {
+  return playing ? (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  ) : (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
 
 interface BeatCardProps {
   beat: Beat;
   onPlay?: (beat: Beat) => void;
   isPlaying?: boolean;
+  isCurrent?: boolean;
 }
 
-export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
+export default function BeatCard({ beat, onPlay, isPlaying, isCurrent }: BeatCardProps) {
   const router = useRouter();
   const [showLicenses, setShowLicenses] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState("");
-  const gradient = genreGradients[beat.genre] || "from-blue-900 via-gray-900 to-black";
+  const active = isCurrent ?? isPlaying;
 
   async function handleLicense(licenseType: "basic" | "premium" | "exclusive") {
     setPurchaseError("");
@@ -52,192 +87,113 @@ export default function BeatCard({ beat, onPlay, isPlaying }: BeatCardProps) {
     }
   }
 
+  const licenses = [
+    { type: "basic" as const, name: "Basic", desc: "MP3", price: beat.priceBasic },
+    { type: "premium" as const, name: "Premium", desc: "MP3 + WAV + stems", price: beat.pricePremium },
+    { type: "exclusive" as const, name: "Exclusive", desc: "Full ownership", price: beat.priceExclusive, sold: beat.status === "exclusive_sold" },
+  ];
+
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 group">
-      {/* Artwork */}
-      <div
-        className={`relative h-44 bg-gradient-to-br ${gradient} cursor-pointer`}
-        onClick={() => onPlay?.(beat)}
-      >
-        {/* Artwork image */}
-        {beat.artwork && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={beat.artwork}
-            alt={beat.title}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        {/* Waveform decoration */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-          <svg viewBox="0 0 200 60" className="w-full h-16">
-            {Array.from({ length: 40 }, (_, i) => {
-              const y = 30 - Math.abs(Math.sin(i * 2.1 + 0.5)) * 25
-              const height = Math.abs(Math.sin(i * 1.7 + 1.2)) * 50 + 10
-              const opacity = 0.6 + Math.abs(Math.sin(i * 3.3)) * 0.4
-              return (
-                <rect key={i} x={i * 5} y={y} width="3" height={height} fill="white" opacity={opacity} />
-              )
-            })}
-          </svg>
-        </div>
-
-        {/* Play button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
-              isPlaying
-                ? "bg-blue-600 shadow-lg shadow-blue-600/50 scale-110"
-                : "bg-black/50 backdrop-blur-sm group-hover:bg-blue-600/80 group-hover:scale-110"
-            }`}
-          >
-            {isPlaying ? (
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </div>
-        </div>
-
-        {/* Genre badge */}
-        <div className="absolute top-3 left-3">
-          <span className="bg-black/60 backdrop-blur-sm text-xs text-gray-300 px-2.5 py-1 rounded-full font-medium border border-gray-700/50">
-            {beat.genre}
-          </span>
-        </div>
-
-        {/* Featured badge */}
+    <article
+      className={`flex flex-col gap-3 p-3 bg-wavr-card rounded-[18px] border transition-colors ${
+        active ? "border-wavr-lime" : "border-[#1E1E27] hover:border-wavr-edge"
+      }`}
+    >
+      {/* Cover + play */}
+      <div className="relative aspect-square rounded-xl overflow-hidden group">
+        <BeatCover beat={beat} className="absolute inset-0" />
+        <span className="absolute left-2.5 top-2.5 px-2.5 py-1 rounded-full bg-wavr-bg/90 text-wavr-text text-xs font-semibold">
+          {beat.genre}
+        </span>
         {beat.featured && (
-          <div className="absolute top-3 right-3">
-            <span className="bg-blue-600 text-xs text-white px-2.5 py-1 rounded-full font-bold shadow-md">
-              Featured
-            </span>
-          </div>
-        )}
-
-        {/* Play count */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-1">
-          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <span className="text-xs text-gray-400">
-            {beat.plays >= 1000 ? `${(beat.plays / 1000).toFixed(1)}k` : beat.plays}
+          <span className="absolute right-2.5 top-2.5 px-2.5 py-1 rounded-full bg-wavr-lime text-wavr-bg text-xs font-bold">
+            Featured
           </span>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => onPlay?.(beat)}
+          aria-label={`${isPlaying ? "Pause" : "Play"} ${beat.title}`}
+          className={`absolute right-2.5 bottom-2.5 w-12 h-12 rounded-full flex items-center justify-center text-wavr-bg transition-transform group-hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+            isPlaying ? "bg-wavr-lime" : "bg-wavr-text"
+          }`}
+        >
+          <PlayIcon playing={!!isPlaying} className={isPlaying ? "w-[18px] h-[18px]" : "w-[18px] h-[18px] ml-0.5"} />
+        </button>
       </div>
 
-      {/* Info */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-sm truncate">{beat.title || "Untitled Beat"}</h3>
-            {beat.producerId ? (
-              <a href={`/p/${beat.producerId}`} className="text-blue-400 text-xs mt-0.5 truncate hover:text-blue-300 transition-colors block">
-                by {beat.producer || "Unknown"}
-              </a>
-            ) : (
-              <p className="text-blue-400 text-xs mt-0.5 truncate">by {beat.producer || "Unknown"}</p>
-            )}
-          </div>
-          <span className="text-white font-bold text-sm ml-2 shrink-0">from ${beat.priceBasic}</span>
-        </div>
-
-        {/* BPM & Key */}
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-xs text-gray-500">
-            <span className="text-gray-400 font-medium">{beat.bpm}</span> BPM
-          </span>
-          <span className="text-gray-700">•</span>
-          <span className="text-xs text-gray-500">
-            Key: <span className="text-gray-400 font-medium">{beat.key}</span>
-          </span>
-        </div>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1 mb-3">
-          {beat.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full border border-gray-700/50">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Actions */}
-        {!showLicenses ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => router.push(`/beat/${beat.id}`)}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors duration-200 shadow-sm"
-            >
-              View Beat
-            </button>
-            <button
-              onClick={() => setShowLicenses(true)}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold py-2 px-3 rounded-lg transition-colors duration-200 border border-gray-700"
-            >
-              License
-            </button>
-          </div>
+      {/* Title + producer */}
+      <div className="flex flex-col gap-0.5 px-0.5 min-w-0">
+        <Link href={`/beat/${beat.id}`} className="text-wavr-text text-[17px] font-bold truncate hover:underline">
+          {beat.title || "Untitled Beat"}
+        </Link>
+        {beat.producerId ? (
+          <Link href={`/p/${beat.producerId}`} className="text-wavr-muted text-sm truncate hover:text-wavr-text transition-colors">
+            {beat.producer || "Unknown"}
+          </Link>
         ) : (
-          <div className="space-y-1.5">
-            {purchaseError && <p className="text-blue-400 text-xs text-center pb-1">{purchaseError}</p>}
-
-            <button
-              onClick={() => handleLicense("basic")}
-              disabled={purchasing}
-              className="w-full flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed group/lic transition-colors"
-            >
-              <div className="text-left">
-                <p className="text-white text-xs font-semibold">Basic</p>
-                <p className="text-gray-500 text-xs">MP3 only</p>
-              </div>
-              <span className="text-blue-400 text-sm font-bold group-hover/lic:text-blue-300">${beat.priceBasic}</span>
-            </button>
-
-            <button
-              onClick={() => handleLicense("premium")}
-              disabled={purchasing}
-              className="w-full flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed group/lic border border-blue-700/30 transition-colors"
-            >
-              <div className="text-left">
-                <p className="text-white text-xs font-semibold">Premium</p>
-                <p className="text-gray-500 text-xs">MP3 + WAV + Stems</p>
-              </div>
-              <span className="text-blue-400 text-sm font-bold group-hover/lic:text-blue-300">${beat.pricePremium}</span>
-            </button>
-
-            <button
-              onClick={() => handleLicense("exclusive")}
-              disabled={purchasing || beat.status === "exclusive_sold"}
-              className="w-full flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed group/lic border border-blue-600/30 transition-colors"
-            >
-              <div className="text-left">
-                <p className="text-white text-xs font-semibold">
-                  Exclusive
-                  {beat.status === "exclusive_sold" && (
-                    <span className="ml-2 text-gray-400 font-normal">Sold</span>
-                  )}
-                </p>
-                <p className="text-gray-500 text-xs">Full ownership</p>
-              </div>
-              <span className="text-blue-400 text-sm font-bold group-hover/lic:text-blue-300">${beat.priceExclusive}</span>
-            </button>
-
-            {purchasing && <p className="text-center text-gray-500 text-xs py-1">Redirecting to checkout…</p>}
-
-            <button
-              onClick={() => { setShowLicenses(false); setPurchaseError(""); }}
-              className="w-full text-gray-500 text-xs py-1 hover:text-gray-400 transition-colors"
-            >
-              ← Back
-            </button>
-          </div>
+          <p className="text-wavr-muted text-sm truncate">{beat.producer || "Unknown"}</p>
         )}
       </div>
-    </div>
+
+      {/* Tags */}
+      <div className="flex flex-wrap gap-1.5 px-0.5">
+        <span className="text-xs font-semibold px-2 py-1 rounded-md bg-wavr-raised text-wavr-soft">{beat.bpm} BPM</span>
+        {beat.key && <span className="text-xs font-semibold px-2 py-1 rounded-md bg-wavr-raised text-wavr-soft">{beat.key}</span>}
+        {beat.mood && <span className="text-xs font-semibold px-2 py-1 rounded-md bg-wavr-raised text-wavr-soft">{beat.mood}</span>}
+      </div>
+
+      {/* Actions */}
+      {!showLicenses ? (
+        <div className="flex items-center gap-2 px-0.5 pt-0.5 mt-auto">
+          <button
+            type="button"
+            onClick={() => setShowLicenses(true)}
+            className="flex-1 h-11 rounded-xl bg-wavr-text text-wavr-bg text-sm font-bold hover:bg-white transition-colors"
+          >
+            From ${beat.priceBasic}
+          </button>
+          <Link
+            href={`/beat/${beat.id}`}
+            aria-label={`View ${beat.title}`}
+            className="w-11 h-11 shrink-0 rounded-xl border border-wavr-edge text-wavr-text flex items-center justify-center hover:border-wavr-muted transition-colors"
+          >
+            <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5 mt-auto">
+          {purchaseError && <p className="text-[#FF8A7A] text-xs text-center">{purchaseError}</p>}
+          {licenses.map((l) => (
+            <button
+              key={l.type}
+              type="button"
+              onClick={() => handleLicense(l.type)}
+              disabled={purchasing || l.sold}
+              className="w-full flex items-center justify-between rounded-lg px-3 py-2 bg-wavr-raised hover:bg-wavr-line disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left"
+            >
+              <span>
+                <span className="block text-wavr-text text-xs font-semibold">
+                  {l.name}
+                  {l.sold && <span className="ml-2 text-wavr-muted font-normal">Sold</span>}
+                </span>
+                <span className="block text-wavr-muted text-xs">{l.desc}</span>
+              </span>
+              <span className="text-wavr-lime text-sm font-bold">${l.price}</span>
+            </button>
+          ))}
+          {purchasing && <p className="text-center text-wavr-muted text-xs py-1">Redirecting to checkout…</p>}
+          <button
+            type="button"
+            onClick={() => { setShowLicenses(false); setPurchaseError(""); }}
+            className="w-full text-wavr-muted text-xs py-1.5 hover:text-wavr-text transition-colors"
+          >
+            Back
+          </button>
+        </div>
+      )}
+    </article>
   );
 }

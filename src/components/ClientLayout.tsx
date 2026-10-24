@@ -41,7 +41,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
         #google_translate_element .goog-te-gadget-simple,
         #google_translate_element_mobile .goog-te-gadget-simple { color: #60a5fa !important; }
       `}} />
-      <div className={currentBeat ? "pb-20" : ""}>
+      <div className={currentBeat ? "pb-36 sm:pb-24" : ""}>
         {children}
       </div>
       <AudioPlayer />

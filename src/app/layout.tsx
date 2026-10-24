@@ -3,10 +3,11 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ClientLayout from "@/components/ClientLayout";
-import { Geist } from "next/font/google";
+import { Geist, Syne } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const syne = Syne({ subsets: ['latin'], weight: ['700', '800'], variable: '--font-display' });
 
 export const metadata: Metadata = {
   title: "WAVR — Sell Beats, Own Your Sound",
@@ -27,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
+    <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable, syne.variable)}>
 
       <body className="min-h-full flex flex-col bg-gray-950 text-white">
         <ClientLayout>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePlayer } from "@/components/PlayerContext";
 
 const FAQ_DATA = [
   { q: "How do I get paid?", a: "Payouts are processed via Stripe Connect. You can request a payout from your dashboard once your balance exceeds $20. Funds typically arrive in 3-5 business days." },
@@ -14,6 +15,10 @@ type Message =
   | { role: "ai"; content: string; ticketPrompt: true };
 
 export default function SupportAI() {
+  // Sit above the bottom player when it is open
+  const { currentBeat } = usePlayer();
+  const lift = currentBeat ? "bottom-40 sm:bottom-28" : "bottom-6";
+  const liftPanel = currentBeat ? "bottom-56 sm:bottom-44" : "bottom-24";
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "ai", content: "Hi! I'm WAVR Assistant. How can I help you today?" },
@@ -110,7 +115,7 @@ export default function SupportAI() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full shadow-2xl shadow-blue-900/20 flex items-center justify-center text-white z-50 hover:scale-110 transition-transform active:scale-95"
+        className={`fixed ${lift} right-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full shadow-2xl shadow-blue-900/20 flex items-center justify-center text-white z-50 hover:scale-110 transition-[transform,bottom] active:scale-95`}
       >
         {isOpen ? (
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +130,7 @@ export default function SupportAI() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[350px] sm:w-[400px] h-[520px] bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className={`fixed ${liftPanel} right-6 w-[350px] sm:w-[400px] h-[520px] max-h-[calc(100vh-8rem)] bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300`}>
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-400 p-4 text-white">
             <div className="flex items-center gap-3">

@@ -53,6 +53,7 @@ export default function Navbar() {
   }
 
   return (
+    <>
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black border-b border-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -234,8 +235,9 @@ export default function Navbar() {
           </div>
         </div>
       )}
-      {/* Spacer to push content down below the fixed navbar */}
-      <div className="h-16" />
     </nav>
+    {/* Spacer to push content down below the fixed navbar (must sit outside the fixed bar) */}
+    <div className="h-16" aria-hidden="true" />
+    </>
   );
 }

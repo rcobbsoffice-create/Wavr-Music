@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { usePlayer } from "@/components/PlayerContext";
+import { BeatCover, PlayIcon } from "@/components/BeatCard";
+import Waveform from "@/components/Waveform";
 
 export default function AudioPlayer() {
   const { currentBeat, isPlaying, togglePlay, setCurrentBeat, watermarkedActive } = usePlayer();
@@ -114,12 +117,6 @@ export default function AudioPlayer() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
-  function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    const audio = audioRef.current;
-    if (!audio || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    audio.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
-  }
 
   const hasAudio = Boolean(currentBeat.audioFile);
 
@@ -132,109 +129,106 @@ export default function AudioPlayer() {
         onEnded={() => setCurrentBeat(null)}
       />
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
+      <section
+        aria-label="Now playing"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-wavr-card/95 backdrop-blur-xl border-t border-wavr-line"
+      >
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex flex-wrap sm:flex-nowrap items-center gap-x-3 sm:gap-x-5 gap-y-2">
           {/* Track info */}
-          <div className="flex items-center gap-3 w-64 shrink-0">
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center">
-              {currentBeat.artwork ? (
-                <img src={currentBeat.artwork} alt={currentBeat.title} className="w-full h-full object-cover" />
-              ) : (
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                </svg>
-              )}
-            </div>
+          <div className="flex items-center gap-3 flex-1 sm:flex-[1_1_220px] min-w-0">
+            <Link href={`/beat/${currentBeat.id}`} className="w-12 h-12 rounded-[10px] overflow-hidden shrink-0" aria-label={`Open ${currentBeat.title}`}>
+              <BeatCover beat={currentBeat} className="w-full h-full" />
+            </Link>
             <div className="min-w-0 flex-1">
-              <p className="text-white text-sm font-semibold truncate">{currentBeat.title}</p>
-              <p className="text-gray-400 text-xs truncate">{currentBeat.producer}</p>
+              <Link href={`/beat/${currentBeat.id}`} className="block text-wavr-text text-[15px] font-bold truncate hover:underline">
+                {currentBeat.title}
+              </Link>
+              <p className="text-wavr-muted text-[13px] truncate">
+                {currentBeat.producer}{currentBeat.bpm ? ` · ${currentBeat.bpm} BPM` : ""}
+              </p>
             </div>
-            <button
-              onClick={toggleLike}
-              disabled={liking}
-              title={liked ? "Remove from saved beats" : "Save beat"}
-              className={`shrink-0 p-1.5 rounded-full transition-all ${liked ? "text-red-400 hover:text-red-300" : "text-gray-600 hover:text-red-400"} disabled:opacity-40`}
-            >
-              <svg className="w-4 h-4" fill={liked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </button>
           </div>
 
-          {/* Controls */}
-          <div className="flex-1 flex flex-col items-center gap-1.5">
-            <div className="flex items-center gap-5">
-              <button
-                onClick={togglePlay}
-                disabled={!hasAudio}
-                className="w-9 h-9 rounded-full bg-blue-700 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors shadow-lg shadow-blue-900/20"
-                aria-label={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? (
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            {/* Progress bar */}
+          {/* Controls + waveform */}
+          <div className="flex items-center gap-3 basis-full sm:basis-auto sm:flex-[3_1_360px] min-w-0 order-last sm:order-none">
+            <button
+              type="button"
+              onClick={togglePlay}
+              disabled={!hasAudio}
+              aria-label={isPlaying ? "Pause" : "Play"}
+              className="w-11 h-11 shrink-0 rounded-full bg-wavr-lime text-wavr-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 transition-transform"
+            >
+              <PlayIcon playing={isPlaying} className={isPlaying ? "w-[18px] h-[18px]" : "w-[18px] h-[18px] ml-0.5"} />
+            </button>
             {watermarkedActive ? (
-              <p className="text-gray-600 text-xs">Seek on the player above</p>
+              <p className="text-wavr-muted text-xs">Seek on the player above</p>
             ) : hasAudio ? (
-              <div className="flex items-center gap-2 w-full max-w-lg">
-                <span className="text-gray-500 text-xs w-8 text-right tabular-nums">
-                  {formatTime(currentTime)}
-                </span>
-                <div
-                  className="flex-1 h-1.5 bg-gray-700 rounded-full cursor-pointer group relative"
-                  onClick={handleSeek}
-                >
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full relative"
-                    style={{ width: `${progress}%` }}
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-                <span className="text-gray-500 text-xs w-8 tabular-nums">
-                  {formatTime(duration)}
-                </span>
-              </div>
+              <>
+                <span className="text-wavr-muted text-xs tabular-nums w-9 text-right shrink-0">{formatTime(currentTime)}</span>
+                <Waveform
+                  seed={currentBeat.id}
+                  bars={72}
+                  progress={progress / 100}
+                  onSeek={(f) => { if (audioRef.current && duration) audioRef.current.currentTime = f * duration; }}
+                  label={`Seek ${currentBeat.title}`}
+                  className="flex-1 min-w-[80px] h-8"
+                />
+                <span className="text-wavr-muted text-xs tabular-nums w-9 shrink-0">{formatTime(duration)}</span>
+              </>
             ) : (
-              <p className="text-gray-600 text-xs">No preview available</p>
+              <p className="text-wavr-muted text-xs">No preview available</p>
             )}
           </div>
 
-          {/* Volume & close */}
-          <div className="flex items-center gap-3 w-48 justify-end shrink-0">
-            <svg className="w-4 h-4 text-gray-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
-            </svg>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="w-20 accent-purple-500 cursor-pointer"
-            />
+          {/* Like, volume, license, close */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
-              onClick={() => setCurrentBeat(null)}
-              className="text-gray-600 hover:text-gray-400 transition-colors ml-1"
-              aria-label="Close player"
+              type="button"
+              onClick={toggleLike}
+              disabled={liking}
+              aria-label={liked ? "Remove from saved beats" : "Save beat"}
+              aria-pressed={liked}
+              className={`hidden sm:flex w-11 h-11 rounded-full border items-center justify-center transition-colors disabled:opacity-40 ${
+                liked ? "border-wavr-lime text-wavr-lime" : "border-wavr-edge text-wavr-text hover:border-wavr-muted"
+              }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+              </svg>
+            </button>
+            <label className="hidden lg:flex items-center gap-2 text-wavr-muted">
+              <span className="sr-only">Volume</span>
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
+              </svg>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="w-20 accent-[#C6FF3D] cursor-pointer"
+              />
+            </label>
+            <Link
+              href={`/beat/${currentBeat.id}`}
+              className="h-10 sm:h-11 px-3.5 sm:px-[18px] rounded-full bg-wavr-text text-wavr-bg text-[13px] sm:text-sm font-bold flex items-center hover:bg-white transition-colors whitespace-nowrap"
+            >
+              License ${currentBeat.priceBasic}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setCurrentBeat(null)}
+              aria-label="Close player"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full text-wavr-muted hover:text-wavr-text flex items-center justify-center transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </>
   );
 }

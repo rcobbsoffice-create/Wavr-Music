@@ -9,7 +9,24 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+      },
       colors: {
+        // WAVR marketplace palette: near-black base, one acid-lime accent
+        wavr: {
+          bg: "#0B0B0F",
+          card: "#121218",
+          surface: "#15151C",
+          raised: "#1C1C25",
+          line: "#262632",
+          edge: "#33333F",
+          text: "#F2F2F5",
+          soft: "#C9C9D4",
+          muted: "#A6A6B4",
+          lime: "#C6FF3D",
+          "lime-dim": "#A9DB2F",
+        },
         background: "var(--background)",
         foreground: "var(--foreground)",
         border: "var(--border)",
